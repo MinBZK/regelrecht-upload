@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - RegelRecht Beheerportaal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/admin/dashboard.html" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Beheerportaal</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/submissions.html">Inzendingen</a>
+        <a href="/admin/calendar.html">Agenda</a>
+        <a href="#" id="btn-logout">Uitloggen</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Overzicht van het uploadportaal</p>
+
+    <div id="admin-name" style="margin-bottom: 24px;"></div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-draft">-</div>
+        <div class="stat-label">Concept</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-submitted">-</div>
+        <div class="stat-label">Ingediend</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-review">-</div>
+        <div class="stat-label">In behandeling</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-completed">-</div>
+        <div class="stat-label">Afgerond</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+      <h2 class="card-title">Snelle acties</h2>
+      <div class="button-group">
+        <a href="/admin/submissions.html"><rr-button variant="primary">Bekijk inzendingen</rr-button></a>
+        <a href="/admin/calendar.html"><rr-button variant="secondary">Beheer agenda</rr-button></a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+      <h2 class="card-title">Statistieken</h2>
+      <div style="display: flex; gap: 24px; margin-top: 12px;">
+        <div>
+          <strong id="stat-documents">-</strong> documenten
+        </div>
+        <div>
+          <strong id="stat-slots">-</strong> beschikbare tijdsloten
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module" src="/admin/admin.js"></script>
+  <script type="module">
+    import { checkAuth, logout, loadDashboard } from '/admin/admin.js';
+
+    document.getElementById('btn-logout').addEventListener('click', logout);
+
+    checkAuth().then(user => {
+      if (user) {
+        document.getElementById('admin-name').innerHTML = `Welkom, <strong>${user.display_name || user.username}</strong>`;
+        loadDashboard();
+      }
+    });
+  </script>
+</body>
+</html>

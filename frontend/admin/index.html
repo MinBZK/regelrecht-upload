@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beheerder Login - RegelRecht Upload Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Beheerportaal</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="main" style="max-width: 400px;">
+    <h1 class="page-title">Inloggen</h1>
+    <p class="page-subtitle">Beheerder toegang</p>
+
+    <div id="status-message" class="status-message" style="display: none;"></div>
+
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label required">Gebruikersnaam</label>
+        <rr-text-field id="username" name="username" placeholder="Gebruikersnaam"></rr-text-field>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">Wachtwoord</label>
+        <rr-text-field id="password" name="password" type="password" placeholder="Wachtwoord"></rr-text-field>
+      </div>
+
+      <div class="button-group">
+        <rr-button variant="primary" id="btn-login" style="width: 100%;">Inloggen</rr-button>
+      </div>
+    </div>
+
+    <p style="text-align: center; margin-top: 24px;">
+      <a href="/" style="color: var(--color-primary);">Terug naar de hoofdpagina</a>
+    </p>
+  </main>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module">
+    document.getElementById('btn-login').addEventListener('click', async () => {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showMessage('Vul gebruikersnaam en wachtwoord in.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          window.location.href = '/admin/dashboard.html';
+        } else {
+          showMessage(result.error || 'Login mislukt.', 'error');
+        }
+      } catch (e) {
+        showMessage('Kon geen verbinding maken met de server.', 'error');
+      }
+    });
+
+    function showMessage(text, type) {
+      const el = document.getElementById('status-message');
+      el.textContent = text;
+      el.className = `status-message ${type}`;
+      el.style.display = 'block';
+    }
+
+    // Check if already logged in
+    fetch('/api/admin/me', { credentials: 'include' })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          window.location.href = '/admin/dashboard.html';
+        }
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inzendingen - RegelRecht Beheerportaal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/admin/dashboard.html" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Beheerportaal</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/submissions.html">Inzendingen</a>
+        <a href="/admin/calendar.html">Agenda</a>
+        <a href="#" id="btn-logout">Uitloggen</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" style="max-width: 1200px;">
+    <h1 class="page-title">Inzendingen</h1>
+    <p class="page-subtitle">Overzicht van alle inzendingen</p>
+
+    <div class="card">
+      <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+          <rr-text-field id="search" placeholder="Zoek op naam, organisatie of slug..."></rr-text-field>
+        </div>
+        <div class="form-group" style="width: 200px; margin-bottom: 0;">
+          <rr-select-field id="filter-status">
+            <option value="">Alle statussen</option>
+            <option value="draft">Concept</option>
+            <option value="submitted">Ingediend</option>
+            <option value="under_review">In behandeling</option>
+            <option value="approved">Goedgekeurd</option>
+            <option value="rejected">Afgewezen</option>
+            <option value="forwarded">Doorgestuurd</option>
+            <option value="completed">Afgerond</option>
+          </rr-select-field>
+        </div>
+        <rr-button variant="secondary" id="btn-search">Zoeken</rr-button>
+      </div>
+
+      <div id="submissions-table">
+        <p>Laden...</p>
+      </div>
+
+      <div id="pagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;"></div>
+    </div>
+
+    <!-- Submission detail modal -->
+    <div id="modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module" src="/admin/admin.js"></script>
+  <script type="module">
+    import { checkAuth, logout, loadSubmissions, openSubmissionModal, closeModal, updateStatus, forwardSubmission } from '/admin/admin.js';
+
+    window.closeModal = closeModal;
+    window.openSubmissionModal = openSubmissionModal;
+    window.updateStatus = updateStatus;
+    window.forwardSubmission = forwardSubmission;
+
+    document.getElementById('btn-logout').addEventListener('click', logout);
+    document.getElementById('btn-search').addEventListener('click', () => loadSubmissions());
+    document.getElementById('search').addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') loadSubmissions();
+    });
+    document.getElementById('filter-status').addEventListener('change', () => loadSubmissions());
+
+    checkAuth().then(user => {
+      if (user) loadSubmissions();
+    });
+  </script>
+</body>
+</html>

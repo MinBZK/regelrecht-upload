@@ -1,0 +1,62 @@
+# RegelRecht Upload Portal - Development Compose File
+# Run with: podman-compose up -d
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    container_name: regelrecht-db
+    environment:
+      POSTGRES_USER: regelrecht
+      POSTGRES_PASSWORD: regelrecht_dev_password
+      POSTGRES_DB: regelrecht_upload
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Initialize database with migration on first run
+      - ./src/db/migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U regelrecht -d regelrecht_upload"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: regelrecht-app
+    environment:
+      DATABASE_URL: postgres://regelrecht:regelrecht_dev_password@postgres:5432/regelrecht_upload
+      HOST: 0.0.0.0
+      PORT: 8080
+      ENVIRONMENT: development
+      UPLOAD_DIR: /app/uploads
+      FRONTEND_DIR: /app/frontend
+      MAX_UPLOAD_SIZE: 52428800  # 50MB
+      SESSION_EXPIRY_HOURS: 8
+      RUST_LOG: regelrecht_upload=debug,tower_http=debug
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/faq"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pgdata:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  default:
+    name: regelrecht-network

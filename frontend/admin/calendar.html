@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda - RegelRecht Beheerportaal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/admin/dashboard.html" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Beheerportaal</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/admin/dashboard.html">Dashboard</a>
+        <a href="/admin/submissions.html">Inzendingen</a>
+        <a href="/admin/calendar.html">Agenda</a>
+        <a href="#" id="btn-logout">Uitloggen</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 class="page-title">Agenda beheer</h1>
+    <p class="page-subtitle">Beheer beschikbare tijdsloten voor gesprekken</p>
+
+    <div class="card">
+      <h2 class="card-title">Nieuw tijdslot toevoegen</h2>
+
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+          <label class="form-label required">Datum</label>
+          <rr-text-field id="slot-date" type="date"></rr-text-field>
+        </div>
+        <div class="form-group" style="width: 120px;">
+          <label class="form-label required">Starttijd</label>
+          <rr-text-field id="slot-start" type="time" value="09:00"></rr-text-field>
+        </div>
+        <div class="form-group" style="width: 120px;">
+          <label class="form-label required">Eindtijd</label>
+          <rr-text-field id="slot-end" type="time" value="10:00"></rr-text-field>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notities (optioneel)</label>
+        <rr-text-field id="slot-notes" placeholder="Bijv. online meeting"></rr-text-field>
+      </div>
+
+      <rr-button variant="primary" id="btn-add-slot">Tijdslot toevoegen</rr-button>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+      <h2 class="card-title">Geplande tijdsloten</h2>
+      <div id="slots-list">
+        <p>Laden...</p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module" src="/admin/admin.js"></script>
+  <script type="module">
+    import { checkAuth, logout, loadCalendarSlots, addCalendarSlot, deleteSlot } from '/admin/admin.js';
+
+    window.deleteSlot = deleteSlot;
+
+    document.getElementById('btn-logout').addEventListener('click', logout);
+    document.getElementById('btn-add-slot').addEventListener('click', addCalendarSlot);
+
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('slot-date').value = tomorrow.toISOString().split('T')[0];
+
+    checkAuth().then(user => {
+      if (user) loadCalendarSlots();
+    });
+  </script>
+</body>
+</html>
