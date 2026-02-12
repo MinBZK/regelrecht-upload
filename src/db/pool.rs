@@ -19,50 +19,47 @@ fn split_sql_statements(sql: &str) -> Vec<String> {
     let mut statements = Vec::new();
     let mut current = String::new();
     let mut in_dollar_block = false;
-    let mut chars = sql.chars().peekable();
+    let chars: Vec<char> = sql.chars().collect();
+    let mut i = 0;
 
-    while let Some(c) = chars.next() {
+    while i < chars.len() {
+        let c = chars[i];
         current.push(c);
 
         // Check for $$ delimiter
-        if c == '$' {
-            if chars.peek() == Some(&'$') {
-                current.push(chars.next().unwrap());
-                in_dollar_block = !in_dollar_block;
-            }
+        if c == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
+            current.push(chars[i + 1]);
+            i += 1;
+            in_dollar_block = !in_dollar_block;
         }
         // Check for statement end (semicolon outside of $$ block)
         else if c == ';' && !in_dollar_block {
             let trimmed = current.trim();
-            if !trimmed.is_empty() {
-                // Skip if it's only comments
-                let without_comments: String = trimmed
-                    .lines()
-                    .filter(|line| !line.trim().starts_with("--"))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                if !without_comments.trim().is_empty() {
-                    statements.push(current.clone());
-                }
+            if !trimmed.is_empty() && has_sql_content(trimmed) {
+                statements.push(current.clone());
             }
             current.clear();
         }
+
+        i += 1;
     }
 
     // Handle any remaining content
     let trimmed = current.trim();
-    if !trimmed.is_empty() {
-        let without_comments: String = trimmed
-            .lines()
-            .filter(|line| !line.trim().starts_with("--"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        if !without_comments.trim().is_empty() {
-            statements.push(current);
-        }
+    if !trimmed.is_empty() && has_sql_content(trimmed) {
+        statements.push(current);
     }
 
     statements
+}
+
+/// Check if a string has actual SQL content (not just comments)
+fn has_sql_content(s: &str) -> bool {
+    s.lines()
+        .any(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !trimmed.starts_with("--")
+        })
 }
 
 /// Run database migrations
