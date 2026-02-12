@@ -112,3 +112,25 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ==========================================================================
+  # Deploy Job - Deploy to ZAD (only on push to main)
+  # ==========================================================================
+  deploy:
+    name: Deploy to ZAD
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Deploy to ZAD
+        id: deploy
+        uses: RijksICTGilde/zad-actions/deploy@v2
+        with:
+          api-key: ${{ secrets.ZAD_API_KEY }}
+          project-id: regelrecht
+          deployment-name: upload
+          component: web
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
