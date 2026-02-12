@@ -451,19 +451,19 @@ pub async fn upload_document(
                     None,
                 )
                 .await;
-                return (
+                (
                     StatusCode::CREATED,
                     Json(ApiResponse::success(DocumentResponse::from(doc))),
-                );
+                )
             }
             Err(e) => {
                 tracing::error!("Failed to store document metadata: {}", e);
                 // Clean up file
                 let _ = fs::remove_file(&file_path).await;
-                return (
+                (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(ApiResponse::error("Failed to store document")),
-                );
+                )
             }
         }
     } else {
