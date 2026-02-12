@@ -70,6 +70,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image-tag: ${{ steps.sha-tag.outputs.image }}
 
     steps:
       - name: Checkout repository
@@ -100,6 +102,10 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
+
+      - name: Determine SHA image tag
+        id: sha-tag
+        run: echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push container image
         uses: docker/build-push-action@v5
@@ -133,4 +139,4 @@ jobs:
           project-id: regel-k4c
           deployment-name: upload
           component: upload
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+          image: ${{ needs.build.outputs.image-tag }}
