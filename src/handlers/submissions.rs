@@ -365,8 +365,8 @@ pub async fn upload_document(
         );
     }
 
-    // Process multipart upload
-    while let Ok(Some(field)) = multipart.next_field().await {
+    // Process multipart upload (single file)
+    if let Ok(Some(field)) = multipart.next_field().await {
         let original_filename = field.file_name().unwrap_or("unknown").to_string();
         let content_type = field
             .content_type()
@@ -466,12 +466,12 @@ pub async fn upload_document(
                 );
             }
         }
+    } else {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error("No file provided")),
+        )
     }
-
-    (
-        StatusCode::BAD_REQUEST,
-        Json(ApiResponse::error("No file provided")),
-    )
 }
 
 /// Add a formal law link
