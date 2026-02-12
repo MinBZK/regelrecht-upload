@@ -5,13 +5,39 @@ use std::time::Duration;
 
 /// Create a new database connection pool
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
-    PgPoolOptions::new()
-        .max_connections(10)
-        .min_connections(2)
-        .acquire_timeout(Duration::from_secs(5))
-        .idle_timeout(Duration::from_secs(600))
-        .connect(database_url)
-        .await
+    tracing::info!("Creating database pool...");
+
+    // Retry connection with backoff
+    let mut attempts = 0;
+    let max_attempts = 5;
+
+    loop {
+        attempts += 1;
+        tracing::info!("Database connection attempt {}/{}", attempts, max_attempts);
+
+        let result = PgPoolOptions::new()
+            .max_connections(10)
+            .min_connections(1)
+            .acquire_timeout(Duration::from_secs(10))
+            .idle_timeout(Duration::from_secs(600))
+            .connect(database_url)
+            .await;
+
+        match result {
+            Ok(pool) => {
+                tracing::info!("Database pool created successfully");
+                return Ok(pool);
+            }
+            Err(e) => {
+                if attempts >= max_attempts {
+                    tracing::error!("Failed to connect to database after {} attempts: {}", attempts, e);
+                    return Err(e);
+                }
+                tracing::warn!("Database connection failed (attempt {}): {}, retrying in {}s...", attempts, e, attempts * 2);
+                tokio::time::sleep(Duration::from_secs(attempts as u64 * 2)).await;
+            }
+        }
+    }
 }
 
 /// Split SQL into statements, properly handling $$ delimited blocks (PL/pgSQL functions)
