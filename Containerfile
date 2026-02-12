@@ -59,7 +59,7 @@ RUN mkdir -p /app/uploads && chown -R appuser:appuser /app
 
 # Set environment defaults
 ENV HOST=0.0.0.0
-ENV PORT=8080
+ENV PORT=8000
 ENV FRONTEND_DIR=/app/frontend
 ENV UPLOAD_DIR=/app/uploads
 ENV RUST_LOG=info
@@ -68,11 +68,11 @@ ENV RUST_LOG=info
 USER appuser
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/faq || exit 1
+    CMD curl -f http://localhost:8000/api/faq || exit 1
 
 # Run the application
 CMD ["/app/regelrecht-upload"]
