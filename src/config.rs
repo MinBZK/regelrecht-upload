@@ -48,9 +48,8 @@ impl Config {
             _ => Environment::Development,
         };
 
-        let database_url = env::var("DATABASE_URL").map_err(|_| {
-            ConfigError::Missing("DATABASE_URL is required".to_string())
-        })?;
+        let database_url = env::var("DATABASE_URL")
+            .map_err(|_| ConfigError::Missing("DATABASE_URL is required".to_string()))?;
 
         Ok(Config {
             host: env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
@@ -59,10 +58,8 @@ impl Config {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(8080),
             database_url,
-            upload_dir: env::var("UPLOAD_DIR")
-                .unwrap_or_else(|_| "/app/uploads".to_string()),
-            frontend_dir: env::var("FRONTEND_DIR")
-                .unwrap_or_else(|_| "./frontend".to_string()),
+            upload_dir: env::var("UPLOAD_DIR").unwrap_or_else(|_| "/app/uploads".to_string()),
+            frontend_dir: env::var("FRONTEND_DIR").unwrap_or_else(|_| "./frontend".to_string()),
             session_expiry_hours: env::var("SESSION_EXPIRY_HOURS")
                 .ok()
                 .and_then(|h| h.parse().ok())

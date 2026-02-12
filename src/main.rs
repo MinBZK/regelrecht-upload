@@ -90,7 +90,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/submissions", post(handlers::create_submission))
         .route("/submissions/:slug", get(handlers::get_submission))
         .route("/submissions/:slug", put(handlers::update_submission))
-        .route("/submissions/:slug/submit", post(handlers::submit_submission))
+        .route(
+            "/submissions/:slug/submit",
+            post(handlers::submit_submission),
+        )
         .route(
             "/submissions/:slug/documents",
             post(handlers::upload_document),
@@ -118,7 +121,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/admin/me", get(handlers::get_current_admin))
         // Admin submission management
         .route("/admin/submissions", get(handlers::list_submissions))
-        .route("/admin/submissions/:id", get(handlers::get_submission_admin))
+        .route(
+            "/admin/submissions/:id",
+            get(handlers::get_submission_admin),
+        )
         .route(
             "/admin/submissions/:id/status",
             put(handlers::update_submission_status),

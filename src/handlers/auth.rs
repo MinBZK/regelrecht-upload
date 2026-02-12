@@ -31,8 +31,15 @@ const MAX_LOGIN_ATTEMPTS: i64 = 10;
 /// Authentication provider trait for modular auth backends
 #[allow(dead_code)]
 pub trait AuthProvider: Send + Sync {
-    fn authenticate(&self, username: &str, password: &str) -> impl std::future::Future<Output = Option<Uuid>> + Send;
-    fn validate_session(&self, token: &str) -> impl std::future::Future<Output = Option<AdminUser>> + Send;
+    fn authenticate(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> impl std::future::Future<Output = Option<Uuid>> + Send;
+    fn validate_session(
+        &self,
+        token: &str,
+    ) -> impl std::future::Future<Output = Option<AdminUser>> + Send;
 }
 
 // =============================================================================
@@ -85,7 +92,10 @@ pub async fn admin_login(
     let parsed_hash = match PasswordHash::new(&user.password_hash) {
         Ok(h) => h,
         Err(_) => {
-            tracing::error!("Invalid password hash in database for user {}", user.username);
+            tracing::error!(
+                "Invalid password hash in database for user {}",
+                user.username
+            );
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 [(header::SET_COOKIE, "".to_string())],
@@ -172,24 +182,20 @@ pub async fn admin_login(
 }
 
 /// Admin logout
-pub async fn admin_logout(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
+pub async fn admin_logout(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     let token = extract_session_token(&headers);
 
     if let Some(token) = token {
         let token_hash = hash_token(&token);
 
         // Get session for audit log
-        let session = sqlx::query_as::<_, AdminSession>(
-            "SELECT * FROM admin_sessions WHERE token_hash = $1",
-        )
-        .bind(&token_hash)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
+        let session =
+            sqlx::query_as::<_, AdminSession>("SELECT * FROM admin_sessions WHERE token_hash = $1")
+                .bind(&token_hash)
+                .fetch_optional(&state.pool)
+                .await
+                .ok()
+                .flatten();
 
         // Delete session
         let _ = sqlx::query("DELETE FROM admin_sessions WHERE token_hash = $1")
@@ -230,8 +236,14 @@ pub async fn get_current_admin(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     match validate_admin_session(&state.pool, &headers).await {
-        Some(user) => (StatusCode::OK, Json(ApiResponse::success(AdminUserResponse::from(user)))),
-        None => (StatusCode::UNAUTHORIZED, Json(ApiResponse::error("Not authenticated"))),
+        Some(user) => (
+            StatusCode::OK,
+            Json(ApiResponse::success(AdminUserResponse::from(user))),
+        ),
+        None => (
+            StatusCode::UNAUTHORIZED,
+            Json(ApiResponse::error("Not authenticated")),
+        ),
     }
 }
 
@@ -257,13 +269,11 @@ pub async fn validate_admin_session(pool: &PgPool, headers: &HeaderMap) -> Optio
     .ok()??;
 
     // Get associated user
-    sqlx::query_as::<_, AdminUser>(
-        "SELECT * FROM admin_users WHERE id = $1 AND is_active = true",
-    )
-    .bind(session.admin_user_id)
-    .fetch_optional(pool)
-    .await
-    .ok()?
+    sqlx::query_as::<_, AdminUser>("SELECT * FROM admin_users WHERE id = $1 AND is_active = true")
+        .bind(session.admin_user_id)
+        .fetch_optional(pool)
+        .await
+        .ok()?
 }
 
 // =============================================================================
@@ -287,8 +297,8 @@ pub async fn create_admin_user(
     password: &str,
     display_name: Option<&str>,
 ) -> Result<AdminUser, sqlx::Error> {
-    let password_hash = hash_password(password)
-        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    let password_hash =
+        hash_password(password).map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
 
     sqlx::query_as::<_, AdminUser>(
         r#"
@@ -375,11 +385,9 @@ async fn check_rate_limit(pool: &PgPool, ip: &str, endpoint: &str) -> bool {
 }
 
 async fn record_attempt(pool: &PgPool, ip: &str, endpoint: &str) {
-    let _ = sqlx::query(
-        "INSERT INTO rate_limit_attempts (ip_address, endpoint) VALUES ($1, $2)",
-    )
-    .bind(ip)
-    .bind(endpoint)
-    .execute(pool)
-    .await;
+    let _ = sqlx::query("INSERT INTO rate_limit_attempts (ip_address, endpoint) VALUES ($1, $2)")
+        .bind(ip)
+        .bind(endpoint)
+        .execute(pool)
+        .await;
 }

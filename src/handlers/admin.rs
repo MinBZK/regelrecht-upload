@@ -53,7 +53,9 @@ pub async fn list_submissions(
         None => {
             return (
                 StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<PaginatedResponse<SubmissionResponse>>::error("Unauthorized")),
+                Json(ApiResponse::<PaginatedResponse<SubmissionResponse>>::error(
+                    "Unauthorized",
+                )),
             )
         }
     };
@@ -79,13 +81,11 @@ pub async fn list_submissions(
         .await
         .unwrap_or_default();
 
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM submissions WHERE status = $1",
-        )
-        .bind(status)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM submissions WHERE status = $1")
+            .bind(status)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
 
         (subs, count)
     } else if let Some(ref search) = query.search {
@@ -194,19 +194,20 @@ pub async fn get_submission_admin(
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     // Validate admin session
-    if validate_admin_session(&state.pool, &headers).await.is_none() {
+    if validate_admin_session(&state.pool, &headers)
+        .await
+        .is_none()
+    {
         return (
             StatusCode::UNAUTHORIZED,
             Json(ApiResponse::<SubmissionResponse>::error("Unauthorized")),
         );
     }
 
-    let submission = sqlx::query_as::<_, Submission>(
-        "SELECT * FROM submissions WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(&state.pool)
-    .await;
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await;
 
     match submission {
         Ok(Some(sub)) => {
@@ -404,7 +405,10 @@ pub async fn get_dashboard_stats(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     // Validate admin session
-    if validate_admin_session(&state.pool, &headers).await.is_none() {
+    if validate_admin_session(&state.pool, &headers)
+        .await
+        .is_none()
+    {
         return (
             StatusCode::UNAUTHORIZED,
             Json(ApiResponse::<serde_json::Value>::error("Unauthorized")),

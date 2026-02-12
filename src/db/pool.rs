@@ -30,10 +30,19 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
             }
             Err(e) => {
                 if attempts >= max_attempts {
-                    tracing::error!("Failed to connect to database after {} attempts: {}", attempts, e);
+                    tracing::error!(
+                        "Failed to connect to database after {} attempts: {}",
+                        attempts,
+                        e
+                    );
                     return Err(e);
                 }
-                tracing::warn!("Database connection failed (attempt {}): {}, retrying in {}s...", attempts, e, attempts * 2);
+                tracing::warn!(
+                    "Database connection failed (attempt {}): {}, retrying in {}s...",
+                    attempts,
+                    e,
+                    attempts * 2
+                );
                 tokio::time::sleep(Duration::from_secs(attempts as u64 * 2)).await;
             }
         }
@@ -81,11 +90,10 @@ fn split_sql_statements(sql: &str) -> Vec<String> {
 
 /// Check if a string has actual SQL content (not just comments)
 fn has_sql_content(s: &str) -> bool {
-    s.lines()
-        .any(|line| {
-            let trimmed = line.trim();
-            !trimmed.is_empty() && !trimmed.starts_with("--")
-        })
+    s.lines().any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with("--")
+    })
 }
 
 /// Run database migrations
@@ -101,7 +109,10 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
             .execute(pool)
             .await
             .map_err(|e| {
-                tracing::warn!("Migration statement may have failed (possibly already exists): {}", e);
+                tracing::warn!(
+                    "Migration statement may have failed (possibly already exists): {}",
+                    e
+                );
                 e
             })
             .ok();

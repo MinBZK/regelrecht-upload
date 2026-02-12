@@ -108,12 +108,10 @@ pub async fn get_submission(
     }
 
     // Get submission
-    let submission = sqlx::query_as::<_, Submission>(
-        "SELECT * FROM submissions WHERE slug = $1",
-    )
-    .bind(&slug)
-    .fetch_optional(&state.pool)
-    .await;
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE slug = $1")
+        .bind(&slug)
+        .fetch_optional(&state.pool)
+        .await;
 
     match submission {
         Ok(Some(submission)) => {
@@ -171,12 +169,10 @@ pub async fn update_submission(
     }
 
     // Check submission exists and is in draft status
-    let existing = sqlx::query_as::<_, Submission>(
-        "SELECT * FROM submissions WHERE slug = $1",
-    )
-    .bind(&slug)
-    .fetch_optional(&state.pool)
-    .await;
+    let existing = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE slug = $1")
+        .bind(&slug)
+        .fetch_optional(&state.pool)
+        .await;
 
     match existing {
         Ok(Some(submission)) => {
@@ -363,7 +359,9 @@ pub async fn upload_document(
     if submission.status != SubmissionStatus::Draft {
         return (
             StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error("Cannot upload to a submitted submission")),
+            Json(ApiResponse::error(
+                "Cannot upload to a submitted submission",
+            )),
         );
     }
 
@@ -387,7 +385,10 @@ pub async fn upload_document(
 
         // Validate file
         if let Err(e) = validate_file_upload(&content_type, data.len(), state.max_upload_size) {
-            return (StatusCode::BAD_REQUEST, Json(ApiResponse::error(e.to_string())));
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(e.to_string())),
+            );
         }
 
         // Create storage path
@@ -489,7 +490,10 @@ pub async fn add_formal_law(
 
     // Validate URL
     if let Err(e) = validate_external_url(&input.external_url) {
-        return (StatusCode::BAD_REQUEST, Json(ApiResponse::error(e.to_string())));
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error(e.to_string())),
+        );
     }
 
     // Get submission
@@ -506,7 +510,9 @@ pub async fn add_formal_law(
     if submission.status != SubmissionStatus::Draft {
         return (
             StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error("Cannot add documents to a submitted submission")),
+            Json(ApiResponse::error(
+                "Cannot add documents to a submitted submission",
+            )),
         );
     }
 
@@ -560,19 +566,29 @@ pub async fn delete_document(
     Path((slug, doc_id)): Path<(String, Uuid)>,
 ) -> impl IntoResponse {
     if let Err(e) = validate_slug(&slug) {
-        return (StatusCode::BAD_REQUEST, Json(ApiResponse::<()>::error(e.to_string())));
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::<()>::error(e.to_string())),
+        );
     }
 
     // Get submission and verify ownership
     let submission = match get_submission_by_slug(&state.pool, &slug).await {
         Some(s) => s,
-        None => return (StatusCode::NOT_FOUND, Json(ApiResponse::error("Submission not found"))),
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::error("Submission not found")),
+            )
+        }
     };
 
     if submission.status != SubmissionStatus::Draft {
         return (
             StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error("Cannot delete documents from a submitted submission")),
+            Json(ApiResponse::error(
+                "Cannot delete documents from a submitted submission",
+            )),
         );
     }
 
@@ -610,7 +626,10 @@ pub async fn delete_document(
 
             (StatusCode::OK, Json(ApiResponse::success(())))
         }
-        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiResponse::error("Document not found"))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::error("Document not found")),
+        ),
         Err(e) => {
             tracing::error!("Database error: {}", e);
             (

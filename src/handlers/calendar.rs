@@ -59,7 +59,8 @@ pub async fn get_available_slots(
     .await
     .unwrap_or_default();
 
-    let responses: Vec<CalendarSlotResponse> = slots.into_iter().map(CalendarSlotResponse::from).collect();
+    let responses: Vec<CalendarSlotResponse> =
+        slots.into_iter().map(CalendarSlotResponse::from).collect();
 
     (StatusCode::OK, Json(ApiResponse::success(responses)))
 }
@@ -79,12 +80,10 @@ pub async fn book_slot(
     }
 
     // Get submission
-    let submission = sqlx::query_as::<_, Submission>(
-        "SELECT * FROM submissions WHERE slug = $1",
-    )
-    .bind(&slug)
-    .fetch_optional(&state.pool)
-    .await;
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE slug = $1")
+        .bind(&slug)
+        .fetch_optional(&state.pool)
+        .await;
 
     let submission = match submission {
         Ok(Some(s)) => s,
@@ -153,11 +152,7 @@ pub async fn book_slot(
             .execute(&state.pool)
             .await;
 
-            tracing::info!(
-                "Slot {} booked for submission {}",
-                input.slot_id,
-                slug
-            );
+            tracing::info!("Slot {} booked for submission {}", input.slot_id, slug);
 
             (
                 StatusCode::OK,
@@ -194,12 +189,10 @@ pub async fn cancel_booking(
     }
 
     // Get submission
-    let submission = sqlx::query_as::<_, Submission>(
-        "SELECT * FROM submissions WHERE slug = $1",
-    )
-    .bind(&slug)
-    .fetch_optional(&state.pool)
-    .await;
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE slug = $1")
+        .bind(&slug)
+        .fetch_optional(&state.pool)
+        .await;
 
     let submission = match submission {
         Ok(Some(s)) => s,
@@ -272,14 +265,21 @@ pub async fn list_slots_admin(
     Query(query): Query<AvailableSlotsQuery>,
 ) -> impl IntoResponse {
     // Validate admin session
-    if validate_admin_session(&state.pool, &headers).await.is_none() {
+    if validate_admin_session(&state.pool, &headers)
+        .await
+        .is_none()
+    {
         return (
             StatusCode::UNAUTHORIZED,
-            Json(ApiResponse::<Vec<CalendarSlotResponse>>::error("Unauthorized")),
+            Json(ApiResponse::<Vec<CalendarSlotResponse>>::error(
+                "Unauthorized",
+            )),
         );
     }
 
-    let from = query.from.unwrap_or_else(|| Utc::now() - chrono::Duration::days(7));
+    let from = query
+        .from
+        .unwrap_or_else(|| Utc::now() - chrono::Duration::days(7));
     let to = query
         .to
         .unwrap_or_else(|| Utc::now() + chrono::Duration::days(60));
@@ -297,7 +297,8 @@ pub async fn list_slots_admin(
     .await
     .unwrap_or_default();
 
-    let responses: Vec<CalendarSlotResponse> = slots.into_iter().map(CalendarSlotResponse::from).collect();
+    let responses: Vec<CalendarSlotResponse> =
+        slots.into_iter().map(CalendarSlotResponse::from).collect();
 
     (StatusCode::OK, Json(ApiResponse::success(responses)))
 }
@@ -314,7 +315,9 @@ pub async fn create_slots(
         None => {
             return (
                 StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<Vec<CalendarSlotResponse>>::error("Unauthorized")),
+                Json(ApiResponse::<Vec<CalendarSlotResponse>>::error(
+                    "Unauthorized",
+                )),
             )
         }
     };
@@ -365,7 +368,10 @@ pub async fn create_slots(
         created_slots.len()
     );
 
-    (StatusCode::CREATED, Json(ApiResponse::success(created_slots)))
+    (
+        StatusCode::CREATED,
+        Json(ApiResponse::success(created_slots)),
+    )
 }
 
 /// Delete a calendar slot (admin)
@@ -386,12 +392,10 @@ pub async fn delete_slot(
     };
 
     // Check if slot is booked
-    let slot = sqlx::query_as::<_, CalendarSlot>(
-        "SELECT * FROM calendar_slots WHERE id = $1",
-    )
-    .bind(slot_id)
-    .fetch_optional(&state.pool)
-    .await;
+    let slot = sqlx::query_as::<_, CalendarSlot>("SELECT * FROM calendar_slots WHERE id = $1")
+        .bind(slot_id)
+        .fetch_optional(&state.pool)
+        .await;
 
     match slot {
         Ok(Some(slot)) => {
