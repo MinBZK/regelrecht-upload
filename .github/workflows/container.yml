@@ -130,7 +130,7 @@ jobs:
         uses: RijksICTGilde/zad-actions/deploy@v2
         with:
           api-key: ${{ secrets.ZAD_API_KEY }}
-          project-id: regelrecht
+          project-id: regel-k4c
           deployment-name: upload
           component: web
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
