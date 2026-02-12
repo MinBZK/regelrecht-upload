@@ -157,6 +157,7 @@ impl From<Document> for DocumentResponse {
 // =============================================================================
 
 #[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
 pub struct AdminUser {
     pub id: Uuid,
     pub username: String,
@@ -202,6 +203,7 @@ pub struct LoginRequest {
 // =============================================================================
 
 #[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
 pub struct AdminSession {
     pub id: Uuid,
     pub admin_user_id: Uuid,

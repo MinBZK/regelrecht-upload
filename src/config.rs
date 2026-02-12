@@ -6,6 +6,7 @@ use std::env;
 
 /// Application configuration
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Config {
     /// Server host address
     pub host: String,
@@ -89,6 +90,7 @@ impl Config {
 }
 
 #[derive(Debug, thiserror::Error)]
+#[allow(dead_code)]
 pub enum ConfigError {
     #[error("Missing configuration: {0}")]
     Missing(String),

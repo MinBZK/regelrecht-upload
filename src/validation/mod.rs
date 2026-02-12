@@ -4,6 +4,7 @@ use crate::models::{CreateSubmission, DocumentClassification};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum ValidationError {
     #[error("Field '{field}' is required")]
     Required { field: String },
