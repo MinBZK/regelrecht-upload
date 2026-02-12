@@ -20,6 +20,7 @@ COPY Cargo.toml Cargo.lock* ./
 # Create dummy src and pin transitive dependencies to Rust 1.85-compatible versions
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
+    cargo fetch && \
     cargo update home --precise 0.5.9 && \
     cargo update getrandom@0.2 --precise 0.2.15 && \
     cargo build --release && \

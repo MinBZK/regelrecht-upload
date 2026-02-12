@@ -47,6 +47,7 @@ jobs:
 
       - name: Pin transitive dependencies
         run: |
+          cargo fetch
           cargo update home --precise 0.5.9
           cargo update getrandom@0.2 --precise 0.2.15
 
