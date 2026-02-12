@@ -76,9 +76,16 @@
 
     document.getElementById('btn-logout').addEventListener('click', logout);
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     checkAuth().then(user => {
       if (user) {
-        document.getElementById('admin-name').innerHTML = `Welkom, <strong>${user.display_name || user.username}</strong>`;
+        document.getElementById('admin-name').innerHTML = `Welkom, <strong>${escapeHtml(user.display_name || user.username)}</strong>`;
         loadDashboard();
       }
     });

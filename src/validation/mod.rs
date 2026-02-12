@@ -152,7 +152,7 @@ pub fn validate_file_upload(
         });
     }
 
-    // Allowed MIME types
+    // Allowed MIME types (no HTML/XML to prevent XSS via stored files)
     let allowed_types = [
         "application/pdf",
         "application/msword",
@@ -160,9 +160,6 @@ pub fn validate_file_upload(
         "application/vnd.oasis.opendocument.text",
         "text/plain",
         "text/markdown",
-        "text/html",
-        "application/xml",
-        "text/xml",
     ];
 
     if !allowed_types.contains(&mime_type) {
@@ -206,5 +203,118 @@ mod tests {
         assert!(validate_slug("-invalid").is_err());
         assert!(validate_slug("UPPERCASE").is_err());
         assert!(validate_slug("").is_err());
+    }
+
+    #[test]
+    fn test_validate_create_submission_valid() {
+        let input = CreateSubmission {
+            submitter_name: "Jan de Vries".to_string(),
+            submitter_email: Some("jan@example.com".to_string()),
+            organization: "Gemeente Amsterdam".to_string(),
+            organization_department: Some("ICT".to_string()),
+        };
+        assert!(validate_create_submission(&input).is_ok());
+    }
+
+    #[test]
+    fn test_validate_create_submission_empty_name() {
+        let input = CreateSubmission {
+            submitter_name: "  ".to_string(),
+            submitter_email: None,
+            organization: "Org".to_string(),
+            organization_department: None,
+        };
+        assert!(matches!(
+            validate_create_submission(&input),
+            Err(ValidationError::Required { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_create_submission_empty_org() {
+        let input = CreateSubmission {
+            submitter_name: "Jan".to_string(),
+            submitter_email: None,
+            organization: "".to_string(),
+            organization_department: None,
+        };
+        assert!(matches!(
+            validate_create_submission(&input),
+            Err(ValidationError::Required { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_create_submission_invalid_email() {
+        let input = CreateSubmission {
+            submitter_name: "Jan".to_string(),
+            submitter_email: Some("not-an-email".to_string()),
+            organization: "Org".to_string(),
+            organization_department: None,
+        };
+        assert!(matches!(
+            validate_create_submission(&input),
+            Err(ValidationError::InvalidEmail)
+        ));
+    }
+
+    #[test]
+    fn test_validate_classification_public() {
+        assert!(validate_classification_for_upload(DocumentClassification::Public).is_ok());
+    }
+
+    #[test]
+    fn test_validate_classification_claude() {
+        assert!(validate_classification_for_upload(DocumentClassification::ClaudeAllowed).is_ok());
+    }
+
+    #[test]
+    fn test_validate_classification_restricted() {
+        assert!(matches!(
+            validate_classification_for_upload(DocumentClassification::Restricted),
+            Err(ValidationError::RestrictedDocument)
+        ));
+    }
+
+    #[test]
+    fn test_validate_external_url_valid() {
+        assert!(validate_external_url("https://wetten.overheid.nl/BWBR0001840/2024-01-01").is_ok());
+    }
+
+    #[test]
+    fn test_validate_external_url_empty() {
+        assert!(matches!(
+            validate_external_url("  "),
+            Err(ValidationError::Required { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_external_url_no_protocol() {
+        assert!(matches!(
+            validate_external_url("wetten.overheid.nl/test"),
+            Err(ValidationError::InvalidUrl)
+        ));
+    }
+
+    #[test]
+    fn test_validate_file_upload_valid_pdf() {
+        assert!(validate_file_upload("application/pdf", 1024, 50 * 1024 * 1024).is_ok());
+    }
+
+    #[test]
+    fn test_validate_file_upload_too_large() {
+        assert!(matches!(
+            validate_file_upload("application/pdf", 100 * 1024 * 1024, 50 * 1024 * 1024),
+            Err(ValidationError::FileTooLarge { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_file_upload_invalid_type() {
+        assert!(matches!(
+            validate_file_upload("application/zip", 1024, 50 * 1024 * 1024),
+            Err(ValidationError::InvalidFileType { .. })
+        ));
     }
 }

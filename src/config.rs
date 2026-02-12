@@ -48,8 +48,38 @@ impl Config {
             _ => Environment::Development,
         };
 
+        // Build DATABASE_URL from various env var formats:
+        // 1. DATABASE_URL (standard)
+        // 2. DATABASE_SERVER_FULL (platform alias)
+        // 3. Individual components: DATABASE_SERVER_HOST, DATABASE_SERVER_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
         let database_url = env::var("DATABASE_URL")
-            .map_err(|_| ConfigError::Missing("DATABASE_URL is required".to_string()))?;
+            .or_else(|_| env::var("DATABASE_SERVER_FULL"))
+            .or_else(|_| {
+                let host = env::var("DATABASE_SERVER_HOST")
+                    .or_else(|_| env::var("APP_DATABASE_SERVER"))
+                    .map_err(|_| env::VarError::NotPresent)?;
+                let port = env::var("DATABASE_SERVER_PORT")
+                    .or_else(|_| env::var("APP_DATABASE_PORT"))
+                    .unwrap_or_else(|_| "5432".to_string());
+                let user = env::var("DATABASE_SERVER_USER")
+                    .or_else(|_| env::var("APP_DATABASE_USER"))
+                    .map_err(|_| env::VarError::NotPresent)?;
+                let password = env::var("DATABASE_PASSWORD")
+                    .or_else(|_| env::var("APP_DATABASE_PASSWORD"))
+                    .map_err(|_| env::VarError::NotPresent)?;
+                let db = env::var("DATABASE_DB")
+                    .or_else(|_| env::var("APP_DATABASE_DB"))
+                    .map_err(|_| env::VarError::NotPresent)?;
+                Ok(format!(
+                    "postgres://{}:{}@{}:{}/{}",
+                    user, password, host, port, db
+                ))
+            })
+            .map_err(|_: env::VarError| {
+                ConfigError::Missing(
+                    "DATABASE_URL, DATABASE_SERVER_FULL, or DATABASE_SERVER_HOST + DATABASE_SERVER_PORT + DATABASE_SERVER_USER + DATABASE_PASSWORD + DATABASE_DB is required".to_string(),
+                )
+            })?;
 
         Ok(Config {
             host: env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
@@ -58,7 +88,11 @@ impl Config {
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(8080),
             database_url,
-            upload_dir: env::var("UPLOAD_DIR").unwrap_or_else(|_| "/app/uploads".to_string()),
+            upload_dir: env::var("UPLOAD_DIR")
+                .or_else(|_| {
+                    env::var("DATA_PATH").map(|p| format!("{}/uploads", p.trim_end_matches('/')))
+                })
+                .unwrap_or_else(|_| "/app/uploads".to_string()),
             frontend_dir: env::var("FRONTEND_DIR").unwrap_or_else(|_| "./frontend".to_string()),
             session_expiry_hours: env::var("SESSION_EXPIRY_HOURS")
                 .ok()

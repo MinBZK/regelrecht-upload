@@ -3,6 +3,7 @@
 pub mod admin;
 pub mod auth;
 pub mod calendar;
+pub mod middleware;
 pub mod submissions;
 
 pub use admin::*;

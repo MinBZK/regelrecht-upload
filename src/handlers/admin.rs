@@ -1,12 +1,11 @@
 //! Admin portal handlers
 
-use crate::handlers::auth::validate_admin_session;
 use crate::models::*;
 use axum::{
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::IntoResponse,
-    Json,
+    Extension, Json,
 };
 use serde::Deserialize;
 use uuid::Uuid;
@@ -44,22 +43,9 @@ pub struct ForwardSubmissionRequest {
 /// List all submissions (admin)
 pub async fn list_submissions(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(admin): Extension<AdminUser>,
     Query(query): Query<ListSubmissionsQuery>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    let admin = match validate_admin_session(&state.pool, &headers).await {
-        Some(a) => a,
-        None => {
-            return (
-                StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<PaginatedResponse<SubmissionResponse>>::error(
-                    "Unauthorized",
-                )),
-            )
-        }
-    };
-
     let page = query.page.unwrap_or(1).max(1);
     let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
     let offset = (page - 1) * per_page;
@@ -139,16 +125,33 @@ pub async fn list_submissions(
         (subs, count)
     };
 
-    // Fetch documents for each submission
-    let mut responses = Vec::new();
-    for sub in submissions {
-        let documents = sqlx::query_as::<_, Document>(
-            "SELECT * FROM documents WHERE submission_id = $1 ORDER BY created_at",
+    // Batch fetch documents for all submissions (avoid N+1 query)
+    let submission_ids: Vec<Uuid> = submissions.iter().map(|s| s.id).collect();
+    let all_documents = if submission_ids.is_empty() {
+        vec![]
+    } else {
+        sqlx::query_as::<_, Document>(
+            "SELECT * FROM documents WHERE submission_id = ANY($1) ORDER BY created_at",
         )
-        .bind(sub.id)
+        .bind(&submission_ids)
         .fetch_all(&state.pool)
         .await
-        .unwrap_or_default();
+        .unwrap_or_default()
+    };
+
+    // Group documents by submission_id
+    let mut docs_by_submission: std::collections::HashMap<Uuid, Vec<Document>> =
+        std::collections::HashMap::new();
+    for doc in all_documents {
+        docs_by_submission
+            .entry(doc.submission_id)
+            .or_default()
+            .push(doc);
+    }
+
+    let mut responses = Vec::new();
+    for sub in submissions {
+        let documents = docs_by_submission.remove(&sub.id).unwrap_or_default();
 
         responses.push(SubmissionResponse {
             id: sub.id,
@@ -190,20 +193,9 @@ pub async fn list_submissions(
 /// Get submission details (admin)
 pub async fn get_submission_admin(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(_admin): Extension<AdminUser>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    if validate_admin_session(&state.pool, &headers)
-        .await
-        .is_none()
-    {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(ApiResponse::<SubmissionResponse>::error("Unauthorized")),
-        );
-    }
-
     let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.pool)
@@ -253,21 +245,10 @@ pub async fn get_submission_admin(
 /// Update submission status (admin)
 pub async fn update_submission_status(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(admin): Extension<AdminUser>,
     Path(id): Path<Uuid>,
     Json(input): Json<UpdateStatusRequest>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    let admin = match validate_admin_session(&state.pool, &headers).await {
-        Some(a) => a,
-        None => {
-            return (
-                StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<Submission>::error("Unauthorized")),
-            )
-        }
-    };
-
     let result = sqlx::query_as::<_, Submission>(
         r#"
         UPDATE submissions
@@ -326,21 +307,10 @@ pub async fn update_submission_status(
 /// Forward submission to RegelRecht team (admin)
 pub async fn forward_submission(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(admin): Extension<AdminUser>,
     Path(id): Path<Uuid>,
     Json(input): Json<ForwardSubmissionRequest>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    let admin = match validate_admin_session(&state.pool, &headers).await {
-        Some(a) => a,
-        None => {
-            return (
-                StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<Submission>::error("Unauthorized")),
-            )
-        }
-    };
-
     // Update status to forwarded
     let result = sqlx::query_as::<_, Submission>(
         r#"
@@ -402,19 +372,8 @@ pub async fn forward_submission(
 /// Get admin dashboard statistics
 pub async fn get_dashboard_stats(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(_admin): Extension<AdminUser>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    if validate_admin_session(&state.pool, &headers)
-        .await
-        .is_none()
-    {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(ApiResponse::<serde_json::Value>::error("Unauthorized")),
-        );
-    }
-
     // Get counts by status
     let stats = sqlx::query_as::<_, (String, i64)>(
         r#"

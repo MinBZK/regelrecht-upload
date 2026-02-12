@@ -16,6 +16,7 @@ mod models;
 mod validation;
 
 use axum::{
+    middleware as axum_middleware,
     routing::{delete, get, post, put},
     Router,
 };
@@ -55,6 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Running database migrations...");
     db::run_migrations(&pool).await?;
 
+    // Seed admin user from environment variables
+    handlers::auth::seed_admin_user(&pool).await;
+
     // Ensure upload directory exists
     let upload_dir = PathBuf::from(&config.upload_dir);
     fs::create_dir_all(&upload_dir).await?;
@@ -65,6 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pool: pool.clone(),
         upload_dir,
         max_upload_size: config.max_upload_size,
+        is_production: config.is_production(),
     };
 
     // Build CORS layer
@@ -83,6 +88,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         CorsLayer::permissive()
     };
+
+    // Admin routes (protected by middleware)
+    let admin_routes = Router::new()
+        .route("/submissions", get(handlers::list_submissions))
+        .route("/submissions/:id", get(handlers::get_submission_admin))
+        .route(
+            "/submissions/:id/status",
+            put(handlers::update_submission_status),
+        )
+        .route(
+            "/submissions/:id/forward",
+            post(handlers::forward_submission),
+        )
+        .route("/dashboard", get(handlers::get_dashboard_stats))
+        .route("/calendar/slots", get(handlers::list_slots_admin))
+        .route("/calendar/slots", post(handlers::create_slots))
+        .route("/calendar/slots/:slot_id", delete(handlers::delete_slot))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            handlers::middleware::require_admin,
+        ));
 
     // Build API routes
     let api_routes = Router::new()
@@ -115,41 +141,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         // FAQ
         .route("/faq", get(handlers::get_faq))
-        // Admin authentication
+        // Admin authentication (no middleware - must work without auth)
         .route("/admin/login", post(handlers::admin_login))
         .route("/admin/logout", post(handlers::admin_logout))
         .route("/admin/me", get(handlers::get_current_admin))
-        // Admin submission management
-        .route("/admin/submissions", get(handlers::list_submissions))
-        .route(
-            "/admin/submissions/:id",
-            get(handlers::get_submission_admin),
-        )
-        .route(
-            "/admin/submissions/:id/status",
-            put(handlers::update_submission_status),
-        )
-        .route(
-            "/admin/submissions/:id/forward",
-            post(handlers::forward_submission),
-        )
-        .route("/admin/dashboard", get(handlers::get_dashboard_stats))
-        // Admin calendar management
-        .route("/admin/calendar/slots", get(handlers::list_slots_admin))
-        .route("/admin/calendar/slots", post(handlers::create_slots))
-        .route(
-            "/admin/calendar/slots/:slot_id",
-            delete(handlers::delete_slot),
-        );
+        // Protected admin routes
+        .nest("/admin", admin_routes);
 
     // Build main router
     let app = Router::new()
         .nest("/api", api_routes)
         .nest_service("/", ServeDir::new(&config.frontend_dir))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            handlers::middleware::security_headers,
+        ))
         .layer(TraceLayer::new_for_http())
         .layer(RequestBodyLimitLayer::new(config.max_upload_size))
         .layer(cors)
         .with_state(state);
+
+    // Spawn periodic cleanup task
+    let cleanup_pool = pool.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
+        loop {
+            interval.tick().await;
+            // Clean up expired rate limit entries
+            if let Err(e) = sqlx::query(
+                "DELETE FROM rate_limit_attempts WHERE attempted_at < NOW() - INTERVAL '1 hour'",
+            )
+            .execute(&cleanup_pool)
+            .await
+            {
+                tracing::warn!("Failed to clean up rate limit entries: {}", e);
+            }
+            // Clean up expired admin sessions
+            if let Err(e) = sqlx::query("DELETE FROM admin_sessions WHERE expires_at < NOW()")
+                .execute(&cleanup_pool)
+                .await
+            {
+                tracing::warn!("Failed to clean up expired sessions: {}", e);
+            }
+            tracing::debug!("Periodic cleanup completed");
+        }
+    });
 
     // Start server
     let addr = config.server_addr();

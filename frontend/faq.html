@@ -50,6 +50,13 @@
 
   <script type="module" src="/webcomponents/index.js"></script>
   <script type="module">
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     async function loadFAQ() {
       const container = document.getElementById('faq-list');
       try {
@@ -59,10 +66,10 @@
           container.innerHTML = result.data.map((item, i) => `
             <div class="faq-item" onclick="this.classList.toggle('open')">
               <div class="faq-question">
-                ${item.question}
+                ${escapeHtml(item.question)}
                 <span style="font-size: 1.25rem;">+</span>
               </div>
-              <div class="faq-answer">${item.answer}</div>
+              <div class="faq-answer">${escapeHtml(item.answer)}</div>
             </div>
           `).join('');
         }

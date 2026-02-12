@@ -1,13 +1,12 @@
 //! Calendar and meeting scheduling handlers
 
-use crate::handlers::auth::validate_admin_session;
 use crate::models::*;
 use crate::validation::validate_slug;
 use axum::{
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::IntoResponse,
-    Json,
+    Extension, Json,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -261,22 +260,9 @@ pub async fn cancel_booking(
 /// List all slots (admin)
 pub async fn list_slots_admin(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(_admin): Extension<AdminUser>,
     Query(query): Query<AvailableSlotsQuery>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    if validate_admin_session(&state.pool, &headers)
-        .await
-        .is_none()
-    {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(ApiResponse::<Vec<CalendarSlotResponse>>::error(
-                "Unauthorized",
-            )),
-        );
-    }
-
     let from = query
         .from
         .unwrap_or_else(|| Utc::now() - chrono::Duration::days(7));
@@ -306,22 +292,9 @@ pub async fn list_slots_admin(
 /// Create new calendar slot(s) (admin)
 pub async fn create_slots(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(admin): Extension<AdminUser>,
     Json(input): Json<Vec<CreateCalendarSlot>>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    let admin = match validate_admin_session(&state.pool, &headers).await {
-        Some(a) => a,
-        None => {
-            return (
-                StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<Vec<CalendarSlotResponse>>::error(
-                    "Unauthorized",
-                )),
-            )
-        }
-    };
-
     let mut created_slots = Vec::new();
 
     for slot_input in input {
@@ -377,20 +350,9 @@ pub async fn create_slots(
 /// Delete a calendar slot (admin)
 pub async fn delete_slot(
     State(state): State<AppState>,
-    headers: HeaderMap,
+    Extension(admin): Extension<AdminUser>,
     Path(slot_id): Path<Uuid>,
 ) -> impl IntoResponse {
-    // Validate admin session
-    let admin = match validate_admin_session(&state.pool, &headers).await {
-        Some(a) => a,
-        None => {
-            return (
-                StatusCode::UNAUTHORIZED,
-                Json(ApiResponse::<()>::error("Unauthorized")),
-            )
-        }
-    };
-
     // Check if slot is booked
     let slot = sqlx::query_as::<_, CalendarSlot>("SELECT * FROM calendar_slots WHERE id = $1")
         .bind(slot_id)

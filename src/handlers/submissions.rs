@@ -1,5 +1,8 @@
 //! Submission handlers for the applicant portal
 
+use crate::handlers::auth::{
+    check_rate_limit_with_max, get_client_ip, record_attempt, MAX_SUBMISSION_ATTEMPTS,
+};
 use crate::models::*;
 use crate::validation::{
     validate_classification_for_upload, validate_create_submission, validate_external_url,
@@ -7,7 +10,7 @@ use crate::validation::{
 };
 use axum::{
     extract::{Multipart, Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     Json,
 };
@@ -23,6 +26,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub upload_dir: PathBuf,
     pub max_upload_size: usize,
+    pub is_production: bool,
 }
 
 // =============================================================================
@@ -32,8 +36,28 @@ pub struct AppState {
 /// Create a new submission
 pub async fn create_submission(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(input): Json<CreateSubmission>,
 ) -> impl IntoResponse {
+    // Rate limit submission creation
+    let client_ip = get_client_ip(&headers);
+    if !check_rate_limit_with_max(
+        &state.pool,
+        &client_ip,
+        "create_submission",
+        MAX_SUBMISSION_ATTEMPTS,
+    )
+    .await
+    {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiResponse::<Submission>::error(
+                "Too many submissions. Please try again later.",
+            )),
+        );
+    }
+    record_attempt(&state.pool, &client_ip, "create_submission").await;
+
     // Validate input
     if let Err(e) = validate_create_submission(&input) {
         return (
@@ -406,8 +430,19 @@ pub async fn upload_document(
             );
         }
 
-        // Write file
+        // Write file - verify path stays within upload directory
         let file_path = submission_dir.join(&storage_filename);
+        if !file_path.starts_with(&state.upload_dir) {
+            tracing::error!(
+                "Path traversal attempt detected: {:?} escapes {:?}",
+                file_path,
+                state.upload_dir
+            );
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error("Invalid filename")),
+            );
+        }
         if let Err(e) = fs::write(&file_path, &data).await {
             tracing::error!("Failed to write file: {}", e);
             return (
@@ -710,18 +745,31 @@ async fn get_submission_by_slug(pool: &PgPool, slug: &str) -> Option<Submission>
 }
 
 fn sanitize_filename(filename: &str) -> String {
-    filename
+    // Extract only the basename (strip any directory components)
+    let basename = filename.rsplit(['/', '\\']).next().unwrap_or(filename);
+
+    let sanitized: String = basename
         .chars()
         .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
                 c
+            } else if c == '.' {
+                // Only allow a single dot for the file extension
+                '.'
             } else {
                 '_'
             }
         })
-        .collect::<String>()
-        .trim_matches('_')
-        .to_string()
+        .collect();
+
+    // Remove leading dots (prevent hidden files / traversal like ..pdf)
+    let sanitized = sanitized.trim_start_matches('.').trim_matches('_');
+
+    if sanitized.is_empty() {
+        "upload".to_string()
+    } else {
+        sanitized.to_string()
+    }
 }
 
 async fn log_audit(

@@ -12,7 +12,6 @@ use axum::{
     Json,
 };
 use chrono::{Duration, Utc};
-use rand::Rng;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -24,23 +23,8 @@ pub const SESSION_COOKIE: &str = "rr_admin_session";
 /// Rate limit: max attempts per IP per hour
 const MAX_LOGIN_ATTEMPTS: i64 = 10;
 
-// =============================================================================
-// Authentication Trait (for future SSO/OAuth extension)
-// =============================================================================
-
-/// Authentication provider trait for modular auth backends
-#[allow(dead_code)]
-pub trait AuthProvider: Send + Sync {
-    fn authenticate(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> impl std::future::Future<Output = Option<Uuid>> + Send;
-    fn validate_session(
-        &self,
-        token: &str,
-    ) -> impl std::future::Future<Output = Option<AdminUser>> + Send;
-}
+/// Rate limit: max submission creations per IP per hour
+pub(crate) const MAX_SUBMISSION_ATTEMPTS: i64 = 20;
 
 // =============================================================================
 // Login Endpoint
@@ -167,11 +151,13 @@ pub async fn admin_login(
     .await;
 
     // Set secure cookie
+    let secure_flag = if state.is_production { "; Secure" } else { "" };
     let cookie = format!(
-        "{}={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}",
+        "{}={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={}{}",
         SESSION_COOKIE,
         token,
-        8 * 3600 // 8 hours
+        8 * 3600, // 8 hours
+        secure_flag
     );
 
     (
@@ -218,9 +204,10 @@ pub async fn admin_logout(State(state): State<AppState>, headers: HeaderMap) -> 
     }
 
     // Clear cookie
+    let secure_flag = if state.is_production { "; Secure" } else { "" };
     let cookie = format!(
-        "{}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0",
-        SESSION_COOKIE
+        "{}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0{}",
+        SESSION_COOKIE, secure_flag
     );
 
     (
@@ -257,7 +244,7 @@ pub async fn validate_admin_session(pool: &PgPool, headers: &HeaderMap) -> Optio
     let token_hash = hash_token(&token);
 
     // Find valid session
-    let session = sqlx::query_as::<_, AdminSession>(
+    let session = match sqlx::query_as::<_, AdminSession>(
         r#"
         SELECT * FROM admin_sessions
         WHERE token_hash = $1 AND expires_at > NOW()
@@ -266,14 +253,32 @@ pub async fn validate_admin_session(pool: &PgPool, headers: &HeaderMap) -> Optio
     .bind(&token_hash)
     .fetch_optional(pool)
     .await
-    .ok()??;
+    {
+        Ok(Some(s)) => s,
+        Ok(None) => {
+            tracing::debug!("No valid session found for token hash");
+            return None;
+        }
+        Err(e) => {
+            tracing::error!("Database error during session lookup: {}", e);
+            return None;
+        }
+    };
 
     // Get associated user
-    sqlx::query_as::<_, AdminUser>("SELECT * FROM admin_users WHERE id = $1 AND is_active = true")
-        .bind(session.admin_user_id)
-        .fetch_optional(pool)
-        .await
-        .ok()?
+    match sqlx::query_as::<_, AdminUser>(
+        "SELECT * FROM admin_users WHERE id = $1 AND is_active = true",
+    )
+    .bind(session.admin_user_id)
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(user) => user,
+        Err(e) => {
+            tracing::error!("Database error fetching admin user: {}", e);
+            None
+        }
+    }
 }
 
 // =============================================================================
@@ -288,8 +293,45 @@ pub fn hash_password(password: &str) -> Result<String, argon2::password_hash::Er
     Ok(hash.to_string())
 }
 
+/// Seed admin user from environment variables (ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD)
+pub async fn seed_admin_user(pool: &PgPool) {
+    let username = match std::env::var("ADMIN_USERNAME") {
+        Ok(v) if !v.is_empty() => v,
+        _ => return,
+    };
+    let email = match std::env::var("ADMIN_EMAIL") {
+        Ok(v) if !v.is_empty() => v,
+        _ => return,
+    };
+    let password = match std::env::var("ADMIN_PASSWORD") {
+        Ok(v) if !v.is_empty() => v,
+        _ => return,
+    };
+
+    // Check if user already exists
+    let existing: Option<(Uuid,)> =
+        sqlx::query_as("SELECT id FROM admin_users WHERE username = $1")
+            .bind(&username)
+            .fetch_optional(pool)
+            .await
+            .unwrap_or(None);
+
+    if existing.is_some() {
+        tracing::info!("Admin user '{}' already exists, skipping seed", username);
+        return;
+    }
+
+    match create_admin_user(pool, &username, &email, &password, Some(&username)).await {
+        Ok(user) => {
+            tracing::info!("Seeded admin user '{}' (id: {})", user.username, user.id);
+        }
+        Err(e) => {
+            tracing::error!("Failed to seed admin user: {}", e);
+        }
+    }
+}
+
 /// Create an admin user (utility function for setup)
-#[allow(dead_code)]
 pub async fn create_admin_user(
     pool: &PgPool,
     username: &str,
@@ -319,7 +361,7 @@ pub async fn create_admin_user(
 // Helper Functions
 // =============================================================================
 
-fn extract_session_token(headers: &HeaderMap) -> Option<String> {
+pub(crate) fn extract_session_token(headers: &HeaderMap) -> Option<String> {
     let cookie_header = headers.get(header::COOKIE)?.to_str().ok()?;
 
     for cookie in cookie_header.split(';') {
@@ -333,21 +375,21 @@ fn extract_session_token(headers: &HeaderMap) -> Option<String> {
 }
 
 fn generate_session_token() -> String {
-    let mut rng = rand::thread_rng();
-    let bytes: [u8; 32] = rng.gen();
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut bytes);
     hex::encode(bytes)
 }
 
-fn hash_token(token: &str) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+pub(crate) fn hash_token(token: &str) -> String {
+    use sha2::{Digest, Sha256};
 
-    let mut hasher = DefaultHasher::new();
-    token.hash(&mut hasher);
-    format!("{:x}", hasher.finish())
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
-fn get_client_ip(headers: &HeaderMap) -> String {
+pub(crate) fn get_client_ip(headers: &HeaderMap) -> String {
     // Check X-Forwarded-For first (for reverse proxy setups)
     if let Some(xff) = headers.get("x-forwarded-for") {
         if let Ok(xff_str) = xff.to_str() {
@@ -367,7 +409,12 @@ fn get_client_ip(headers: &HeaderMap) -> String {
     "unknown".to_string()
 }
 
-async fn check_rate_limit(pool: &PgPool, ip: &str, endpoint: &str) -> bool {
+pub(crate) async fn check_rate_limit_with_max(
+    pool: &PgPool,
+    ip: &str,
+    endpoint: &str,
+    max_attempts: i64,
+) -> bool {
     let count: i64 = sqlx::query_scalar(
         r#"
         SELECT COUNT(*) FROM rate_limit_attempts
@@ -381,13 +428,126 @@ async fn check_rate_limit(pool: &PgPool, ip: &str, endpoint: &str) -> bool {
     .await
     .unwrap_or(0);
 
-    count < MAX_LOGIN_ATTEMPTS
+    count < max_attempts
 }
 
-async fn record_attempt(pool: &PgPool, ip: &str, endpoint: &str) {
+pub(crate) async fn check_rate_limit(pool: &PgPool, ip: &str, endpoint: &str) -> bool {
+    check_rate_limit_with_max(pool, ip, endpoint, MAX_LOGIN_ATTEMPTS).await
+}
+
+pub(crate) async fn record_attempt(pool: &PgPool, ip: &str, endpoint: &str) {
     let _ = sqlx::query("INSERT INTO rate_limit_attempts (ip_address, endpoint) VALUES ($1, $2)")
         .bind(ip)
         .bind(endpoint)
         .execute(pool)
         .await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hash_token_is_sha256() {
+        let hash = hash_token("test-token");
+        // SHA-256 produces 64-character hex string
+        assert_eq!(hash.len(), 64);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_hash_token_is_deterministic() {
+        let hash1 = hash_token("same-token");
+        let hash2 = hash_token("same-token");
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_hash_token_different_inputs() {
+        let hash1 = hash_token("token-a");
+        let hash2 = hash_token("token-b");
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_generate_session_token_length() {
+        let token = generate_session_token();
+        // 32 random bytes = 64 hex chars
+        assert_eq!(token.len(), 64);
+        assert!(token.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_generate_session_token_unique() {
+        let t1 = generate_session_token();
+        let t2 = generate_session_token();
+        assert_ne!(t1, t2);
+    }
+
+    #[test]
+    fn test_hash_password_and_verify() {
+        let password = "test-password-123!";
+        let hash = hash_password(password).unwrap();
+
+        // Hash should be an Argon2 hash
+        assert!(hash.starts_with("$argon2"));
+
+        // Verify should succeed
+        let parsed = PasswordHash::new(&hash).unwrap();
+        assert!(Argon2::default()
+            .verify_password(password.as_bytes(), &parsed)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_hash_password_wrong_password() {
+        let hash = hash_password("correct-password").unwrap();
+        let parsed = PasswordHash::new(&hash).unwrap();
+        assert!(Argon2::default()
+            .verify_password(b"wrong-password", &parsed)
+            .is_err());
+    }
+
+    #[test]
+    fn test_extract_session_token_from_cookie() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::COOKIE,
+            "rr_admin_session=abc123; other=xyz".parse().unwrap(),
+        );
+        assert_eq!(extract_session_token(&headers), Some("abc123".to_string()));
+    }
+
+    #[test]
+    fn test_extract_session_token_missing() {
+        let headers = HeaderMap::new();
+        assert_eq!(extract_session_token(&headers), None);
+    }
+
+    #[test]
+    fn test_extract_session_token_wrong_cookie() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::COOKIE, "other_cookie=abc123".parse().unwrap());
+        assert_eq!(extract_session_token(&headers), None);
+    }
+
+    #[test]
+    fn test_get_client_ip_xff() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", "1.2.3.4, 5.6.7.8".parse().unwrap());
+        assert_eq!(get_client_ip(&headers), "1.2.3.4");
+    }
+
+    #[test]
+    fn test_get_client_ip_real_ip() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-real-ip", "10.0.0.1".parse().unwrap());
+        assert_eq!(get_client_ip(&headers), "10.0.0.1");
+    }
+
+    #[test]
+    fn test_get_client_ip_unknown() {
+        let headers = HeaderMap::new();
+        assert_eq!(get_client_ip(&headers), "unknown");
+    }
 }

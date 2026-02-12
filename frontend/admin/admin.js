@@ -175,7 +175,7 @@ function renderSubmissionDetail(sub) {
   };
 
   body.innerHTML = `
-    <h2 style="margin-bottom: 24px;">Inzending: ${sub.slug}</h2>
+    <h2 style="margin-bottom: 24px;">Inzending: ${escapeHtml(sub.slug)}</h2>
 
     <div class="detail-section">
       <h3>Contactgegevens</h3>
@@ -183,11 +183,11 @@ function renderSubmissionDetail(sub) {
         <span class="detail-label">Naam:</span>
         <span class="detail-value">${escapeHtml(sub.submitter_name)}</span>
         <span class="detail-label">E-mail:</span>
-        <span class="detail-value">${sub.submitter_email || '-'}</span>
+        <span class="detail-value">${escapeHtml(sub.submitter_email) || '-'}</span>
         <span class="detail-label">Organisatie:</span>
         <span class="detail-value">${escapeHtml(sub.organization)}</span>
         <span class="detail-label">Afdeling:</span>
-        <span class="detail-value">${sub.organization_department || '-'}</span>
+        <span class="detail-value">${escapeHtml(sub.organization_department) || '-'}</span>
       </div>
     </div>
 
@@ -212,8 +212,8 @@ function renderSubmissionDetail(sub) {
             <div>
               <div class="document-name">
                 ${doc.external_url
-                  ? `<a href="${doc.external_url}" target="_blank">${doc.external_title || doc.external_url}</a>`
-                  : doc.filename || 'Document'}
+                  ? `<a href="${escapeHtml(doc.external_url)}" target="_blank">${escapeHtml(doc.external_title || doc.external_url)}</a>`
+                  : escapeHtml(doc.filename) || 'Document'}
               </div>
               <div class="document-meta">
                 ${categoryLabels[doc.category] || doc.category} |

@@ -242,14 +242,14 @@ function renderDocumentList() {
       <div class="document-info">
         <div class="document-icon">${doc.category === 'formal_law' ? '🔗' : '📄'}</div>
         <div>
-          <div class="document-name">${doc.external_title || doc.filename || 'Document'}</div>
+          <div class="document-name">${escapeHtml(doc.external_title || doc.filename || 'Document')}</div>
           <div class="document-meta">
-            ${categoryLabels[doc.category] || doc.category}
-            <span class="badge ${classificationBadges[doc.classification] || ''}">${doc.classification}</span>
+            ${escapeHtml(categoryLabels[doc.category] || doc.category)}
+            <span class="badge ${classificationBadges[doc.classification] || ''}">${escapeHtml(doc.classification)}</span>
           </div>
         </div>
       </div>
-      <button onclick="removeDocument('${doc.id}')" style="background: none; border: none; color: #dc2626; cursor: pointer;">
+      <button onclick="removeDocument('${escapeHtml(doc.id)}')" style="background: none; border: none; color: #dc2626; cursor: pointer;">
         Verwijderen
       </button>
     </div>
@@ -357,6 +357,13 @@ async function handleSubmit() {
   } catch (e) {
     showMessage('Kon geen verbinding maken met de server.', 'error');
   }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 function showMessage(text, type) {
