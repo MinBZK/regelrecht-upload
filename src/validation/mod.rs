@@ -174,19 +174,49 @@ pub fn validate_file_upload(
 /// Dangerous file extensions that could be executed if misconfigured
 const DANGEROUS_EXTENSIONS: &[&str] = &[
     // Server-side scripting
-    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps",
-    ".asp", ".aspx", ".jsp", ".jspx",
-    ".cgi", ".pl", ".py", ".pyc", ".pyo",
-    ".rb", ".erb",
+    ".php",
+    ".phtml",
+    ".php3",
+    ".php4",
+    ".php5",
+    ".php7",
+    ".phps",
+    ".asp",
+    ".aspx",
+    ".jsp",
+    ".jspx",
+    ".cgi",
+    ".pl",
+    ".py",
+    ".pyc",
+    ".pyo",
+    ".rb",
+    ".erb",
     // Executables
-    ".exe", ".bat", ".cmd", ".com", ".msi", ".dll",
-    ".sh", ".bash", ".zsh", ".ksh",
+    ".exe",
+    ".bat",
+    ".cmd",
+    ".com",
+    ".msi",
+    ".dll",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".ksh",
     // JavaScript/TypeScript (could be dangerous in some contexts)
-    ".js", ".jsx", ".ts", ".tsx", ".mjs",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
     // Server config files
-    ".htaccess", ".htpasswd",
+    ".htaccess",
+    ".htpasswd",
     // Java
-    ".jar", ".war", ".ear", ".class",
+    ".jar",
+    ".war",
+    ".ear",
+    ".class",
 ];
 
 /// Check filename for dangerous extensions that could be executed
