@@ -36,7 +36,7 @@ pub async fn admin_login(
     headers: HeaderMap,
     Json(input): Json<LoginRequest>,
 ) -> impl IntoResponse {
-    let client_ip = get_client_ip(&headers);
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
 
     // Check rate limit
     if !check_rate_limit(&state.pool, &client_ip, "login").await {
@@ -293,7 +293,13 @@ pub fn hash_password(password: &str) -> Result<String, argon2::password_hash::Er
     Ok(hash.to_string())
 }
 
-/// Seed admin user from environment variables (ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD)
+/// Seed admin user from environment variables
+///
+/// Accepts either:
+/// - ADMIN_PASSWORD_HASH: Argon2 hash (recommended for production)
+/// - ADMIN_PASSWORD: plain text (for development only)
+///
+/// Required: ADMIN_USERNAME and ADMIN_EMAIL
 pub async fn seed_admin_user(pool: &PgPool) {
     let username = match std::env::var("ADMIN_USERNAME") {
         Ok(v) if !v.is_empty() => v,
@@ -303,9 +309,35 @@ pub async fn seed_admin_user(pool: &PgPool) {
         Ok(v) if !v.is_empty() => v,
         _ => return,
     };
-    let password = match std::env::var("ADMIN_PASSWORD") {
-        Ok(v) if !v.is_empty() => v,
-        _ => return,
+
+    // Prefer pre-hashed password over plain text
+    let password_hash = if let Ok(hash) = std::env::var("ADMIN_PASSWORD_HASH") {
+        if !hash.is_empty() && hash.starts_with("$argon2") {
+            tracing::info!("Using ADMIN_PASSWORD_HASH for admin user");
+            hash
+        } else {
+            tracing::error!(
+                "ADMIN_PASSWORD_HASH is set but not a valid Argon2 hash (must start with '$argon2')"
+            );
+            return;
+        }
+    } else if let Ok(password) = std::env::var("ADMIN_PASSWORD") {
+        if !password.is_empty() {
+            tracing::warn!(
+                "Using ADMIN_PASSWORD (plain text). Consider using ADMIN_PASSWORD_HASH for production."
+            );
+            match hash_password(&password) {
+                Ok(h) => h,
+                Err(e) => {
+                    tracing::error!("Failed to hash admin password: {}", e);
+                    return;
+                }
+            }
+        } else {
+            return;
+        }
+    } else {
+        return;
     };
 
     // Check if user already exists
@@ -321,7 +353,22 @@ pub async fn seed_admin_user(pool: &PgPool) {
         return;
     }
 
-    match create_admin_user(pool, &username, &email, &password, Some(&username)).await {
+    // Create admin user with pre-computed hash
+    let result = sqlx::query_as::<_, AdminUser>(
+        r#"
+        INSERT INTO admin_users (username, email, password_hash, display_name)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+        "#,
+    )
+    .bind(&username)
+    .bind(&email)
+    .bind(&password_hash)
+    .bind(&username)
+    .fetch_one(pool)
+    .await;
+
+    match result {
         Ok(user) => {
             tracing::info!("Seeded admin user '{}' (id: {})", user.username, user.id);
         }
@@ -389,20 +436,52 @@ pub(crate) fn hash_token(token: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-pub(crate) fn get_client_ip(headers: &HeaderMap) -> String {
-    // Check X-Forwarded-For first (for reverse proxy setups)
-    if let Some(xff) = headers.get("x-forwarded-for") {
-        if let Ok(xff_str) = xff.to_str() {
-            if let Some(first_ip) = xff_str.split(',').next() {
-                return first_ip.trim().to_string();
+/// Get client IP address, validating X-Forwarded-For against trusted proxies
+///
+/// Only trusts X-Forwarded-For header when:
+/// 1. trusted_proxies is empty (backwards compatible, but logs warning)
+/// 2. The X-Real-IP (set by nginx/proxy) matches a trusted proxy prefix
+///
+/// This prevents clients from spoofing their IP to bypass rate limiting.
+pub(crate) fn get_client_ip(headers: &HeaderMap, trusted_proxies: &[String]) -> String {
+    // Get the direct connecting IP (typically set by reverse proxy)
+    let direct_ip = headers
+        .get("x-real-ip")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    // Determine if we should trust X-Forwarded-For
+    let should_trust_xff = if trusted_proxies.is_empty() {
+        // No trusted proxies configured - trust XFF but log warning in production
+        // This maintains backwards compatibility
+        true
+    } else {
+        // Only trust XFF if direct connection is from a trusted proxy
+        direct_ip
+            .as_ref()
+            .map(|ip| trusted_proxies.iter().any(|prefix| ip.starts_with(prefix)))
+            .unwrap_or(false)
+    };
+
+    // If we trust the proxy, use X-Forwarded-For
+    if should_trust_xff {
+        if let Some(xff) = headers.get("x-forwarded-for") {
+            if let Ok(xff_str) = xff.to_str() {
+                // Take the first (leftmost) IP - the original client
+                if let Some(first_ip) = xff_str.split(',').next() {
+                    let client_ip = first_ip.trim().to_string();
+                    if !client_ip.is_empty() {
+                        return client_ip;
+                    }
+                }
             }
         }
     }
 
-    // Check X-Real-IP
-    if let Some(real_ip) = headers.get("x-real-ip") {
-        if let Ok(ip) = real_ip.to_str() {
-            return ip.to_string();
+    // Fall back to X-Real-IP
+    if let Some(ip) = direct_ip {
+        if !ip.is_empty() {
+            return ip;
         }
     }
 
@@ -532,22 +611,44 @@ mod tests {
     }
 
     #[test]
-    fn test_get_client_ip_xff() {
+    fn test_get_client_ip_xff_no_trusted_proxies() {
+        // With no trusted proxies, XFF is trusted (backwards compatible)
         let mut headers = HeaderMap::new();
         headers.insert("x-forwarded-for", "1.2.3.4, 5.6.7.8".parse().unwrap());
-        assert_eq!(get_client_ip(&headers), "1.2.3.4");
+        assert_eq!(get_client_ip(&headers, &[]), "1.2.3.4");
+    }
+
+    #[test]
+    fn test_get_client_ip_xff_with_trusted_proxy() {
+        // With trusted proxy matching X-Real-IP, XFF is trusted
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", "1.2.3.4".parse().unwrap());
+        headers.insert("x-real-ip", "10.0.0.1".parse().unwrap());
+        let trusted = vec!["10.0.0.".to_string()];
+        assert_eq!(get_client_ip(&headers, &trusted), "1.2.3.4");
+    }
+
+    #[test]
+    fn test_get_client_ip_xff_untrusted_proxy() {
+        // With trusted proxy NOT matching X-Real-IP, XFF is NOT trusted
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", "1.2.3.4".parse().unwrap());
+        headers.insert("x-real-ip", "192.168.1.1".parse().unwrap());
+        let trusted = vec!["10.0.0.".to_string()];
+        // Falls back to X-Real-IP since we don't trust the XFF
+        assert_eq!(get_client_ip(&headers, &trusted), "192.168.1.1");
     }
 
     #[test]
     fn test_get_client_ip_real_ip() {
         let mut headers = HeaderMap::new();
         headers.insert("x-real-ip", "10.0.0.1".parse().unwrap());
-        assert_eq!(get_client_ip(&headers), "10.0.0.1");
+        assert_eq!(get_client_ip(&headers, &[]), "10.0.0.1");
     }
 
     #[test]
     fn test_get_client_ip_unknown() {
         let headers = HeaderMap::new();
-        assert_eq!(get_client_ip(&headers), "unknown");
+        assert_eq!(get_client_ip(&headers, &[]), "unknown");
     }
 }

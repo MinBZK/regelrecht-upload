@@ -19,7 +19,7 @@ Het in kaart brengen van privacy-risico's verbonden aan de verwerking van persoo
 
 ### 1.3 Scope
 - RegelRecht Upload Portal (web applicatie)
-- Proof of Concept periode (maximaal 12 maanden)
+- Proof of Concept periode (duur van de PoC implementatie)
 - Verwerking van persoonsgegevens van indieners en hun organisaties
 
 ---
@@ -56,12 +56,12 @@ De RegelRecht Upload Portal faciliteert het volgende proces:
 
 | Categorie | Gegevens | Herkomst | Bewaartermijn |
 |-----------|----------|----------|---------------|
-| Identificatie | Naam | Gebruiker | 12 maanden |
-| Contact | E-mail (optioneel) | Gebruiker | 12 maanden |
-| Organisatie | Organisatienaam, afdeling | Gebruiker | 12 maanden |
-| Documenten | Geuploade bestanden | Gebruiker | 12 maanden |
-| Technisch | IP-adres, sessietokens | Systeem | 12 maanden |
-| Audit | Verwerkingslog | Systeem | 12 maanden |
+| Identificatie | Naam | Gebruiker | Duur PoC implementatie |
+| Contact | E-mail (optioneel) | Gebruiker | Duur PoC implementatie |
+| Organisatie | Organisatienaam, afdeling | Gebruiker | Duur PoC implementatie |
+| Documenten | Geuploade bestanden | Gebruiker | Duur PoC implementatie |
+| Technisch | IP-adres, sessietokens | Systeem | Duur PoC implementatie |
+| Audit | Verwerkingslog | Systeem | Duur PoC implementatie |
 
 ### 2.3 Categorieën betrokkenen
 - **Indieners**: Medewerkers van overheidsorganisaties die documenten indienen
@@ -92,7 +92,7 @@ De verwerking is noodzakelijk voor:
 
 ### 3.3 Proportionaliteit
 - **Minimale gegevensverzameling**: Alleen noodzakelijke gegevens worden gevraagd
-- **Beperkte bewaartermijn**: Maximaal 12 maanden
+- **Beperkte bewaartermijn**: Duur van de PoC implementatie
 - **Opt-out mogelijkheid**: Inzendingen kunnen worden verwijderd
 
 ### 3.4 Subsidiariteit
@@ -191,7 +191,7 @@ Er is geen minder ingrijpend alternatief beschikbaar dat hetzelfde doel kan bere
 
 Voor verdere risicobeperking worden de volgende aanvullende maatregelen aanbevolen:
 
-1. **Automatische verwijdering**: Implementeer automatische verwijdering van gegevens na 12 maanden
+1. **Automatische verwijdering**: Implementeer automatische verwijdering van gegevens na afloop van de PoC implementatie
 2. **Penetratietest**: Voer voor livegang een penetratietest uit
 3. **Backup versleuteling**: Versleutel backups at-rest
 4. **Monitoring**: Implementeer alerting bij verdachte activiteiten
@@ -252,7 +252,7 @@ _Te vullen door verwerkingsverantwoordelijke_
 
 Deze DPIA wordt herzien:
 - Bij significante wijzigingen aan de verwerking
-- Na 12 maanden (einde PoC periode)
+- Na afloop van de PoC implementatie
 - Na een beveiligingsincident
 
 ---

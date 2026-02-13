@@ -26,6 +26,9 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     /// Environment (development/production)
     pub environment: Environment,
+    /// Trusted proxy IP prefixes (e.g., ["10.0.0.", "172.16."])
+    /// Only trust X-Forwarded-For headers from these IPs
+    pub trusted_proxies: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -106,6 +109,16 @@ impl Config {
                 .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
                 .unwrap_or_else(|_| vec!["http://localhost:8080".to_string()]),
             environment,
+            // Trusted proxy prefixes - only trust X-Forwarded-For from these IPs
+            // Examples: "10.0.0.", "172.16.", "127.0.0.1"
+            trusted_proxies: env::var("TRUSTED_PROXIES")
+                .map(|s| {
+                    s.split(',')
+                        .map(|p| p.trim().to_string())
+                        .filter(|p| !p.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
         })
     }
 

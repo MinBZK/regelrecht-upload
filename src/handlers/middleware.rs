@@ -45,9 +45,10 @@ pub async fn require_admin(
     let session = match session {
         Ok(Some(s)) => s,
         Ok(None) => {
+            // Use generic error message
             return (
                 StatusCode::UNAUTHORIZED,
-                axum::Json(json!({"success": false, "error": "Session expired or invalid"})),
+                axum::Json(json!({"success": false, "error": "Authentication failed"})),
             )
                 .into_response();
         }
@@ -55,7 +56,7 @@ pub async fn require_admin(
             tracing::error!("Database error during session validation: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                axum::Json(json!({"success": false, "error": "Authentication error"})),
+                axum::Json(json!({"success": false, "error": "Authentication failed"})),
             )
                 .into_response();
         }
@@ -72,9 +73,10 @@ pub async fn require_admin(
     let user = match user {
         Ok(Some(u)) => u,
         Ok(None) => {
+            // Use generic error to prevent username enumeration
             return (
                 StatusCode::UNAUTHORIZED,
-                axum::Json(json!({"success": false, "error": "User not found or inactive"})),
+                axum::Json(json!({"success": false, "error": "Authentication failed"})),
             )
                 .into_response();
         }
@@ -82,7 +84,7 @@ pub async fn require_admin(
             tracing::error!("Database error fetching admin user: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                axum::Json(json!({"success": false, "error": "Authentication error"})),
+                axum::Json(json!({"success": false, "error": "Authentication failed"})),
             )
                 .into_response();
         }

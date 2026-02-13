@@ -171,6 +171,46 @@ pub fn validate_file_upload(
     Ok(())
 }
 
+/// Dangerous file extensions that could be executed if misconfigured
+const DANGEROUS_EXTENSIONS: &[&str] = &[
+    // Server-side scripting
+    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps",
+    ".asp", ".aspx", ".jsp", ".jspx",
+    ".cgi", ".pl", ".py", ".pyc", ".pyo",
+    ".rb", ".erb",
+    // Executables
+    ".exe", ".bat", ".cmd", ".com", ".msi", ".dll",
+    ".sh", ".bash", ".zsh", ".ksh",
+    // JavaScript/TypeScript (could be dangerous in some contexts)
+    ".js", ".jsx", ".ts", ".tsx", ".mjs",
+    // Server config files
+    ".htaccess", ".htpasswd",
+    // Java
+    ".jar", ".war", ".ear", ".class",
+];
+
+/// Check filename for dangerous extensions that could be executed
+///
+/// This is a defense-in-depth measure. Even though:
+/// 1. MIME type whitelist blocks most dangerous types
+/// 2. Files are not served directly by the web server
+///
+/// We still check for dangerous extensions anywhere in the filename
+/// (e.g., "malware.php.pdf" contains ".php")
+pub fn validate_filename_extensions(filename: &str) -> Result<(), ValidationError> {
+    let lower = filename.to_lowercase();
+
+    for ext in DANGEROUS_EXTENSIONS {
+        if lower.contains(ext) {
+            return Err(ValidationError::InvalidFileType {
+                mime_type: format!("filename contains dangerous extension: {}", ext),
+            });
+        }
+    }
+
+    Ok(())
+}
+
 /// Simple email validation
 fn is_valid_email(email: &str) -> bool {
     // Basic check: contains @ and at least one .
@@ -316,5 +356,29 @@ mod tests {
             validate_file_upload("application/zip", 1024, 50 * 1024 * 1024),
             Err(ValidationError::InvalidFileType { .. })
         ));
+    }
+
+    #[test]
+    fn test_validate_filename_extensions_safe() {
+        assert!(validate_filename_extensions("document.pdf").is_ok());
+        assert!(validate_filename_extensions("report.docx").is_ok());
+        assert!(validate_filename_extensions("notes.txt").is_ok());
+        assert!(validate_filename_extensions("readme.md").is_ok());
+    }
+
+    #[test]
+    fn test_validate_filename_extensions_dangerous() {
+        // Direct dangerous extensions
+        assert!(validate_filename_extensions("script.php").is_err());
+        assert!(validate_filename_extensions("shell.sh").is_err());
+        assert!(validate_filename_extensions("malware.exe").is_err());
+
+        // Double extensions (hidden dangerous extension)
+        assert!(validate_filename_extensions("document.php.pdf").is_err());
+        assert!(validate_filename_extensions("image.exe.jpg").is_err());
+
+        // Case insensitive
+        assert!(validate_filename_extensions("SCRIPT.PHP").is_err());
+        assert!(validate_filename_extensions("Shell.SH").is_err());
     }
 }

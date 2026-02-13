@@ -6,7 +6,7 @@ use crate::handlers::auth::{
 use crate::models::*;
 use crate::validation::{
     validate_classification_for_upload, validate_create_submission, validate_external_url,
-    validate_file_upload, validate_slug,
+    validate_file_upload, validate_filename_extensions, validate_slug,
 };
 use axum::{
     extract::{Multipart, Path, Query, State},
@@ -27,6 +27,8 @@ pub struct AppState {
     pub upload_dir: PathBuf,
     pub max_upload_size: usize,
     pub is_production: bool,
+    /// Trusted proxy IP prefixes for X-Forwarded-For validation
+    pub trusted_proxies: Vec<String>,
 }
 
 // =============================================================================
@@ -40,7 +42,7 @@ pub async fn create_submission(
     Json(input): Json<CreateSubmission>,
 ) -> impl IntoResponse {
     // Rate limit submission creation
-    let client_ip = get_client_ip(&headers);
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
     if !check_rate_limit_with_max(
         &state.pool,
         &client_ip,
@@ -409,6 +411,14 @@ pub async fn upload_document(
 
         // Validate file
         if let Err(e) = validate_file_upload(&content_type, data.len(), state.max_upload_size) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(e.to_string())),
+            );
+        }
+
+        // Validate filename doesn't contain dangerous extensions
+        if let Err(e) = validate_filename_extensions(&original_filename) {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::error(e.to_string())),

@@ -23,7 +23,7 @@ Directie Digitale Overheid
 Postbus 20011
 2500 EA Den Haag
 
-E-mail: regelrecht@minbzk.nl
+E-mail: bureau.architectuur@minbzk.nl
 
 ---
 
@@ -98,14 +98,16 @@ Wij verwerken de volgende categorieën persoonsgegevens:
 
 ## 7. Bewaartermijn
 
-Uw persoonsgegevens worden bewaard gedurende de looptijd van de Proof of Concept, met een **maximale bewaartermijn van 12 maanden** na de datum van indiening.
+Uw persoonsgegevens worden bewaard **gedurende de looptijd van de PoC implementatie**. Dit betreft de periode die nodig is voor het uitvoeren van de Proof of Concept en het afronden van de daaruit voortvloeiende werkzaamheden.
 
-Na afloop van deze termijn worden uw gegevens verwijderd, tenzij:
+Na afloop van de PoC implementatie worden uw gegevens verwijderd, tenzij:
 - U expliciet toestemming geeft voor een langere bewaartermijn
 - Er een wettelijke verplichting bestaat om de gegevens langer te bewaren
 - De gegevens noodzakelijk zijn voor de afhandeling van een geschil
 
-Geaggregeerde, niet tot personen herleidbare onderzoeksresultaten kunnen voor wetenschappelijke doeleinden worden bewaard.
+De verwachte duur van de PoC implementatie wordt bij aanvang gecommuniceerd. U kunt te allen tijde informeren naar de actuele einddatum via bureau.architectuur@minbzk.nl.
+
+Geaggregeerde, niet tot personen herleidbare onderzoeksresultaten kunnen voor onderzoeks- of beleidsonderzoeksdoeleinden worden bewaard.
 
 ---
 
@@ -151,7 +153,7 @@ U heeft het recht om bezwaar te maken tegen de verwerking van uw persoonsgegeven
 
 ### 9.7 Uitoefening van uw rechten
 Om uw rechten uit te oefenen, kunt u contact opnemen via:
-- E-mail: regelrecht@minbzk.nl
+- E-mail: bureau.architectuur@minbzk.nl
 - Post: Ministerie van BZK, t.a.v. RegelRecht, Postbus 20011, 2500 EA Den Haag
 
 Wij zullen binnen één maand reageren op uw verzoek. Indien nodig kan deze termijn met twee maanden worden verlengd, afhankelijk van de complexiteit van het verzoek.
@@ -202,7 +204,7 @@ Voor vragen over deze privacyverklaring of de verwerking van uw persoonsgegevens
 
 **RegelRecht Team**
 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties
-E-mail: regelrecht@minbzk.nl
+E-mail: bureau.architectuur@minbzk.nl
 
 ---
 

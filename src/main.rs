@@ -70,6 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         upload_dir,
         max_upload_size: config.max_upload_size,
         is_production: config.is_production(),
+        trusted_proxies: config.trusted_proxies.clone(),
     };
 
     // Build CORS layer
