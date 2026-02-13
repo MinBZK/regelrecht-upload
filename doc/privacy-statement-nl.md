@@ -66,6 +66,16 @@ Door het indienen van documenten via de Portal geeft u toestemming voor de verwe
 ### 5.2 Gerechtvaardigd belang (artikel 6 lid 1 sub f AVG)
 Voor zover de verwerking noodzakelijk is voor het uitvoeren van onderzoek naar machine-leesbare regels ten behoeve van de verbetering van overheidsdienstverlening, beroepen wij ons op ons gerechtvaardigd belang. Dit belang weegt zwaarder dan eventuele nadelige gevolgen voor u, mede gelet op de beperkte impact van de verwerking en de waarborgen die wij bieden.
 
+### 5.3 Toestemming bij indiening
+
+Door het indienen van documenten via de RegelRecht Upload Portal:
+- Verklaart u kennis te hebben genomen van deze privacyverklaring
+- Geeft u toestemming voor de verwerking van uw persoonsgegevens zoals beschreven in deze verklaring
+- Geeft u toestemming voor het gebruik van uw documenten voor het RegelRecht onderzoeksproject
+
+U kunt uw toestemming te allen tijde intrekken door contact op te nemen via bureau.architectuur@minbzk.nl.
+Het intrekken van toestemming heeft geen invloed op de rechtmatigheid van verwerkingen die hebben plaatsgevonden vóór de intrekking.
+
 ---
 
 ## 6. Welke persoonsgegevens verwerken wij?

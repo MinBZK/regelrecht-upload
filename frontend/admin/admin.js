@@ -241,6 +241,14 @@ function renderSubmissionDetail(sub) {
         <rr-button variant="secondary" onclick="forwardSubmission('${sub.id}')">Doorsturen naar team</rr-button>
       </div>
     </div>
+
+    <div class="detail-section">
+      <h3>Exporteren</h3>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <rr-button variant="secondary" onclick="exportSubmissionJson('${sub.id}')">Exporteer als JSON</rr-button>
+        <rr-button variant="secondary" onclick="exportSubmissionFiles('${sub.id}')">Download bestanden (ZIP)</rr-button>
+      </div>
+    </div>
   `;
 }
 
@@ -404,5 +412,24 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Export functions
+export async function exportSubmissionJson(id) {
+  try {
+    window.location.href = `/api/admin/submissions/${id}/export`;
+  } catch (e) {
+    alert('Fout bij exporteren.');
+  }
+}
+
+export async function exportSubmissionFiles(id) {
+  try {
+    window.location.href = `/api/admin/submissions/${id}/export/files`;
+  } catch (e) {
+    alert('Fout bij downloaden bestanden.');
+  }
+}
+
 // Make loadSubmissions globally available for pagination
 window.loadSubmissions = loadSubmissions;
+window.exportSubmissionJson = exportSubmissionJson;
+window.exportSubmissionFiles = exportSubmissionFiles;

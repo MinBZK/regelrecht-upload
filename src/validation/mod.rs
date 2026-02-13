@@ -225,13 +225,21 @@ const DANGEROUS_EXTENSIONS: &[&str] = &[
 /// 1. MIME type whitelist blocks most dangerous types
 /// 2. Files are not served directly by the web server
 ///
-/// We still check for dangerous extensions anywhere in the filename
-/// (e.g., "malware.php.pdf" contains ".php")
+/// We check for dangerous extensions at the end of the filename
+/// and for double extensions (e.g., "malware.php.pdf")
 pub fn validate_filename_extensions(filename: &str) -> Result<(), ValidationError> {
     let lower = filename.to_lowercase();
 
     for ext in DANGEROUS_EXTENSIONS {
-        if lower.contains(ext) {
+        // Check if filename ends with the dangerous extension
+        if lower.ends_with(ext) {
+            return Err(ValidationError::InvalidFileType {
+                mime_type: format!("filename contains dangerous extension: {}", ext),
+            });
+        }
+        // Check for double extensions like .php.pdf (dangerous extension followed by another extension)
+        let double_ext_pattern = format!("{}.", ext);
+        if lower.contains(&double_ext_pattern) {
             return Err(ValidationError::InvalidFileType {
                 mime_type: format!("filename contains dangerous extension: {}", ext),
             });

@@ -72,8 +72,17 @@ async function handleStep1Next() {
   const org = document.getElementById('organization').value.trim();
   const dept = document.getElementById('organization_department').value.trim();
 
+  // Consent checkboxes valideren
+  const consentPrivacy = document.getElementById('consent_privacy').checked;
+  const consentDocuments = document.getElementById('consent_documents').checked;
+
   if (!name || !org) {
     showMessage('Vul alle verplichte velden in.', 'error');
+    return;
+  }
+
+  if (!consentPrivacy || !consentDocuments) {
+    showMessage('U moet akkoord gaan met de privacyverklaring en toestemming geven voor documentgebruik.', 'error');
     return;
   }
 

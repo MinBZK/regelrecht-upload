@@ -102,6 +102,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/submissions/:id/forward",
             post(handlers::forward_submission),
         )
+        .route(
+            "/submissions/:id/export",
+            get(handlers::export_submission_json),
+        )
+        .route(
+            "/submissions/:id/export/files",
+            get(handlers::export_submission_files),
+        )
         .route("/dashboard", get(handlers::get_dashboard_stats))
         .route("/calendar/slots", get(handlers::list_slots_admin))
         .route("/calendar/slots", post(handlers::create_slots))

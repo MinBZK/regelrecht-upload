@@ -66,12 +66,14 @@
   <script type="module" src="/webcomponents/index.js"></script>
   <script type="module" src="/admin/admin.js"></script>
   <script type="module">
-    import { checkAuth, logout, loadSubmissions, openSubmissionModal, closeModal, updateStatus, forwardSubmission } from '/admin/admin.js';
+    import { checkAuth, logout, loadSubmissions, openSubmissionModal, closeModal, updateStatus, forwardSubmission, exportSubmissionJson, exportSubmissionFiles } from '/admin/admin.js';
 
     window.closeModal = closeModal;
     window.openSubmissionModal = openSubmissionModal;
     window.updateStatus = updateStatus;
     window.forwardSubmission = forwardSubmission;
+    window.exportSubmissionJson = exportSubmissionJson;
+    window.exportSubmissionFiles = exportSubmissionFiles;
 
     document.getElementById('btn-logout').addEventListener('click', logout);
     document.getElementById('btn-search').addEventListener('click', () => loadSubmissions());

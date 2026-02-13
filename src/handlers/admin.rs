@@ -2,13 +2,17 @@
 
 use crate::models::*;
 use axum::{
+    body::Body,
     extract::{Path, Query, State},
-    http::StatusCode,
-    response::IntoResponse,
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
     Extension, Json,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::io::{Cursor, Write};
 use uuid::Uuid;
+use zip::write::SimpleFileOptions;
+use zip::ZipWriter;
 
 use super::AppState;
 
@@ -408,4 +412,209 @@ pub async fn get_dashboard_stats(
             "available_meeting_slots": pending_slots
         }))),
     )
+}
+
+// =============================================================================
+// Export Endpoints
+// =============================================================================
+
+/// Export submission data as JSON
+#[derive(Debug, Serialize)]
+pub struct SubmissionExport {
+    pub submission: SubmissionResponse,
+    pub exported_at: chrono::DateTime<chrono::Utc>,
+    pub exported_by: String,
+}
+
+pub async fn export_submission_json(
+    State(state): State<AppState>,
+    Extension(admin): Extension<AdminUser>,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await;
+
+    match submission {
+        Ok(Some(sub)) => {
+            let documents = sqlx::query_as::<_, Document>(
+                "SELECT * FROM documents WHERE submission_id = $1 ORDER BY created_at",
+            )
+            .bind(sub.id)
+            .fetch_all(&state.pool)
+            .await
+            .unwrap_or_default();
+
+            let response = SubmissionResponse {
+                id: sub.id,
+                slug: sub.slug.clone(),
+                submitter_name: sub.submitter_name,
+                submitter_email: sub.submitter_email,
+                organization: sub.organization,
+                organization_department: sub.organization_department,
+                status: sub.status,
+                notes: sub.notes,
+                created_at: sub.created_at,
+                updated_at: sub.updated_at,
+                submitted_at: sub.submitted_at,
+                documents: documents.into_iter().map(DocumentResponse::from).collect(),
+            };
+
+            let export = SubmissionExport {
+                submission: response,
+                exported_at: chrono::Utc::now(),
+                exported_by: admin.username.clone(),
+            };
+
+            tracing::info!(
+                "Admin {} exported submission {} as JSON",
+                admin.username,
+                id
+            );
+
+            let json_data = serde_json::to_string_pretty(&export).unwrap_or_default();
+            let filename = format!("submission_{}.json", sub.slug);
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename=\"{}\"", filename),
+                )
+                .body(Body::from(json_data))
+                .unwrap()
+        }
+        Ok(None) => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                serde_json::to_string(&ApiResponse::<()>::error("Submission not found")).unwrap(),
+            ))
+            .unwrap(),
+        Err(e) => {
+            tracing::error!("Database error: {}", e);
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&ApiResponse::<()>::error("Database error")).unwrap(),
+                ))
+                .unwrap()
+        }
+    }
+}
+
+/// Export submission files as ZIP
+pub async fn export_submission_files(
+    State(state): State<AppState>,
+    Extension(admin): Extension<AdminUser>,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await;
+
+    match submission {
+        Ok(Some(sub)) => {
+            let documents = sqlx::query_as::<_, Document>(
+                "SELECT * FROM documents WHERE submission_id = $1 ORDER BY created_at",
+            )
+            .bind(sub.id)
+            .fetch_all(&state.pool)
+            .await
+            .unwrap_or_default();
+
+            // Create ZIP file in memory
+            let mut zip_buffer = Cursor::new(Vec::new());
+            {
+                let mut zip = ZipWriter::new(&mut zip_buffer);
+                let options = SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Deflated);
+
+                // Add submission metadata as JSON
+                let metadata = SubmissionExport {
+                    submission: SubmissionResponse {
+                        id: sub.id,
+                        slug: sub.slug.clone(),
+                        submitter_name: sub.submitter_name.clone(),
+                        submitter_email: sub.submitter_email.clone(),
+                        organization: sub.organization.clone(),
+                        organization_department: sub.organization_department.clone(),
+                        status: sub.status,
+                        notes: sub.notes.clone(),
+                        created_at: sub.created_at,
+                        updated_at: sub.updated_at,
+                        submitted_at: sub.submitted_at,
+                        documents: documents.iter().cloned().map(DocumentResponse::from).collect(),
+                    },
+                    exported_at: chrono::Utc::now(),
+                    exported_by: admin.username.clone(),
+                };
+
+                let metadata_json = serde_json::to_string_pretty(&metadata).unwrap_or_default();
+                if zip.start_file("metadata.json", options).is_ok() {
+                    let _ = zip.write_all(metadata_json.as_bytes());
+                }
+
+                // Add each document file
+                for doc in &documents {
+                    if let Some(ref file_path) = doc.file_path {
+                        let path = std::path::Path::new(file_path);
+                        if path.exists() {
+                            if let Ok(file_data) = tokio::fs::read(path).await {
+                                let filename = doc
+                                    .original_filename
+                                    .as_ref()
+                                    .unwrap_or(&doc.filename.clone().unwrap_or_else(|| "unknown".to_string()));
+                                if zip.start_file(format!("files/{}", filename), options).is_ok() {
+                                    let _ = zip.write_all(&file_data);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let _ = zip.finish();
+            }
+
+            tracing::info!(
+                "Admin {} exported submission {} files as ZIP",
+                admin.username,
+                id
+            );
+
+            let zip_data = zip_buffer.into_inner();
+            let filename = format!("submission_{}_files.zip", sub.slug);
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "application/zip")
+                .header(
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename=\"{}\"", filename),
+                )
+                .body(Body::from(zip_data))
+                .unwrap()
+        }
+        Ok(None) => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                serde_json::to_string(&ApiResponse::<()>::error("Submission not found")).unwrap(),
+            ))
+            .unwrap(),
+        Err(e) => {
+            tracing::error!("Database error: {}", e);
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&ApiResponse::<()>::error("Database error")).unwrap(),
+                ))
+                .unwrap()
+        }
+    }
 }
