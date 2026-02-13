@@ -11,7 +11,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Write};
 use uuid::Uuid;
-use zip::write::SimpleFileOptions;
+use zip::write::FileOptions;
 use zip::ZipWriter;
 
 use super::AppState;
@@ -531,8 +531,8 @@ pub async fn export_submission_files(
             let mut zip_buffer = Cursor::new(Vec::new());
             {
                 let mut zip = ZipWriter::new(&mut zip_buffer);
-                let options = SimpleFileOptions::default()
-                    .compression_method(zip::CompressionMethod::Deflated);
+                let options =
+                    FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
                 // Add submission metadata as JSON
                 let metadata = SubmissionExport {
@@ -548,7 +548,11 @@ pub async fn export_submission_files(
                         created_at: sub.created_at,
                         updated_at: sub.updated_at,
                         submitted_at: sub.submitted_at,
-                        documents: documents.iter().cloned().map(DocumentResponse::from).collect(),
+                        documents: documents
+                            .iter()
+                            .cloned()
+                            .map(DocumentResponse::from)
+                            .collect(),
                     },
                     exported_at: chrono::Utc::now(),
                     exported_by: admin.username.clone(),
@@ -565,11 +569,15 @@ pub async fn export_submission_files(
                         let path = std::path::Path::new(file_path);
                         if path.exists() {
                             if let Ok(file_data) = tokio::fs::read(path).await {
-                                let filename = doc
-                                    .original_filename
-                                    .as_ref()
-                                    .unwrap_or(&doc.filename.clone().unwrap_or_else(|| "unknown".to_string()));
-                                if zip.start_file(format!("files/{}", filename), options).is_ok() {
+                                let fallback = doc
+                                    .filename
+                                    .clone()
+                                    .unwrap_or_else(|| "unknown".to_string());
+                                let filename = doc.original_filename.as_ref().unwrap_or(&fallback);
+                                if zip
+                                    .start_file(format!("files/{}", filename), options)
+                                    .is_ok()
+                                {
                                     let _ = zip.write_all(&file_data);
                                 }
                             }
