@@ -701,8 +701,9 @@ pub async fn get_faq() -> impl IntoResponse {
         FaqItem {
             question: "Ik heb nog geen interne werkprocessen en wilde eigenlijk alleen beginnen bij de hoogste liggende wet".to_string(),
             answer: "We hebben meer informatie nodig om met je project aan de slag te kunnen. \
-                De focus van RegelRecht ligt op het vertalen van uitvoeringsbeleid en werkinstructies \
-                naar machine-leesbare regels, waarbij de formele wetgeving als basis dient."
+                De onderzoeksfocus van RegelRecht ligt op dit moment op het vertalen van \
+                uitvoeringsbeleid en werkinstructies naar machine-leesbare regels, waarbij de \
+                formele wetgeving als basis dient."
                 .to_string(),
         },
         FaqItem {
@@ -731,9 +732,9 @@ pub async fn get_faq() -> impl IntoResponse {
         },
         FaqItem {
             question: "Hoe lang worden mijn gegevens bewaard?".to_string(),
-            answer: "Uw gegevens worden bewaard voor de duur van de Proof of Concept (maximaal \
-                12 maanden). Na afloop van de PoC worden de gegevens verwijderd, tenzij u toestemming \
-                geeft voor langer bewaren. Zie onze privacyverklaring voor meer details."
+            answer: "Uw gegevens worden bewaard gedurende de looptijd van de PoC implementatie. \
+                Na afloop worden de gegevens verwijderd, tenzij u toestemming geeft voor langer \
+                bewaren. Zie onze privacyverklaring voor meer details."
                 .to_string(),
         },
     ];

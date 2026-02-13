@@ -317,14 +317,16 @@ pub async fn seed_admin_user(pool: &PgPool) {
             hash
         } else {
             tracing::error!(
-                "ADMIN_PASSWORD_HASH is set but not a valid Argon2 hash (must start with '$argon2')"
+                "ADMIN_PASSWORD_HASH is set but not a valid Argon2 hash \
+                (must start with '$argon2')"
             );
             return;
         }
     } else if let Ok(password) = std::env::var("ADMIN_PASSWORD") {
         if !password.is_empty() {
             tracing::warn!(
-                "Using ADMIN_PASSWORD (plain text). Consider using ADMIN_PASSWORD_HASH for production."
+                "Using ADMIN_PASSWORD (plain text). \
+                Consider using ADMIN_PASSWORD_HASH for production."
             );
             match hash_password(&password) {
                 Ok(h) => h,
