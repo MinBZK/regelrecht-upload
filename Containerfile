@@ -58,9 +58,11 @@ COPY frontend /app/frontend
 COPY entrypoint.sh /app/entrypoint.sh
 
 # Create upload directory and set permissions
+# Use GID 0 (root group) for OpenShift compatibility - arbitrary UIDs get GID 0
 RUN mkdir -p /data && \
     chmod +x /app/entrypoint.sh && \
-    chown -R appuser:appuser /app /data
+    chgrp -R 0 /app /data && \
+    chmod -R g=u /app /data
 
 # Set environment defaults
 ENV HOST=0.0.0.0
