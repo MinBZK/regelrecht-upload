@@ -44,7 +44,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load configuration
     let config = config::Config::from_env()?;
-    tracing::info!("Starting RegelRecht Upload Portal");
+    let git_sha = std::env::var("GIT_SHA").unwrap_or_else(|_| "unknown".to_string());
+    tracing::info!("Starting RegelRecht Upload Portal (build: {})", git_sha);
     tracing::info!("Environment: {:?}", config.environment);
 
     // Create database pool

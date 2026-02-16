@@ -64,6 +64,10 @@ RUN mkdir -p /data && \
     chgrp -R 0 /app /data && \
     chmod -R g=u /app /data
 
+# Build version (set by docker build --build-arg)
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 # Set environment defaults
 ENV HOST=0.0.0.0
 ENV PORT=8000
