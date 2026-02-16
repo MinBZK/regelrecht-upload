@@ -340,6 +340,13 @@ pub async fn upload_document(
     Query(query): Query<UploadDocumentQuery>,
     mut multipart: Multipart,
 ) -> impl IntoResponse {
+    tracing::info!(
+        "Upload request received for slug={}, category={:?}, classification={:?}",
+        slug,
+        query.category,
+        query.classification
+    );
+
     // Validate slug
     if let Err(e) = validate_slug(&slug) {
         return (
