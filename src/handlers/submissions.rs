@@ -162,6 +162,7 @@ pub async fn get_submission(
                 created_at: submission.created_at,
                 updated_at: submission.updated_at,
                 submitted_at: submission.submitted_at,
+                retention_expiry_date: submission.retention_expiry_date,
                 documents: documents.into_iter().map(DocumentResponse::from).collect(),
             };
 
@@ -793,9 +794,10 @@ pub async fn get_faq() -> impl IntoResponse {
         },
         FaqItem {
             question: "Hoe lang worden mijn gegevens bewaard?".to_string(),
-            answer: "Uw gegevens worden bewaard gedurende de looptijd van de PoC implementatie. \
-                Na afloop worden de gegevens verwijderd, tenzij u toestemming geeft voor langer \
-                bewaren. Zie onze privacyverklaring voor meer details."
+            answer: "Uw gegevens worden bewaard tot 12 maanden na indiening. De exacte \
+                vervaldatum is zichtbaar bij het opvragen van uw inzendingsstatus. Na afloop \
+                worden de gegevens verwijderd, tenzij u toestemming geeft voor langer bewaren. \
+                Zie onze privacyverklaring voor meer details."
                 .to_string(),
         },
     ];

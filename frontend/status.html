@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Opvragen - RegelRecht Upload Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Upload Portal</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/submit.html">Nieuwe inzending</a>
+        <a href="/status.html">Status opvragen</a>
+        <a href="/faq.html">FAQ</a>
+        <a href="/privacy.html">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 class="page-title">Status Opvragen</h1>
+    <p class="page-subtitle">Bekijk de status van uw inzending met uw referentiecode</p>
+
+    <div id="status-message" class="status-message" style="display: none;"></div>
+
+    <!-- Lookup form -->
+    <div id="lookup-form" class="card">
+      <h2 class="card-title">Voer uw referentiecode in</h2>
+      <p style="margin-bottom: 16px;">De referentiecode heeft u ontvangen na het afronden van uw inzending (bijv. rr-20260216-abc12).</p>
+
+      <div class="form-group">
+        <label class="form-label required">Referentiecode</label>
+        <rr-text-field id="slug" name="slug" placeholder="rr-20260216-xxxxx" required></rr-text-field>
+      </div>
+
+      <div class="button-group">
+        <rr-button variant="primary" id="btn-lookup">Status opvragen</rr-button>
+      </div>
+    </div>
+
+    <!-- Status result -->
+    <div id="status-result" class="card" style="display: none;">
+      <h2 class="card-title">Inzending Details</h2>
+
+      <div class="detail-section">
+        <h3>Algemene informatie</h3>
+        <div class="detail-grid" id="submission-info">
+          <!-- Filled by JavaScript -->
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>Status & Termijnen</h3>
+        <div class="detail-grid" id="submission-status">
+          <!-- Filled by JavaScript -->
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>Documenten</h3>
+        <div id="submission-documents">
+          <!-- Filled by JavaScript -->
+        </div>
+      </div>
+
+      <div class="button-group" style="margin-top: 24px;">
+        <rr-button variant="secondary" id="btn-new-lookup">Andere inzending opvragen</rr-button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <span>&copy; 2026 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties</span>
+      <nav class="footer-links">
+        <a href="/privacy.html">Privacyverklaring</a>
+        <a href="/faq.html">FAQ</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module" src="/js/status.js"></script>
+</body>
+</html>

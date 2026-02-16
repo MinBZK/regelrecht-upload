@@ -409,6 +409,11 @@ async function handleSubmit() {
     const result = await response.json();
     if (result.success) {
       document.getElementById('submission-slug').textContent = submissionSlug;
+      // Update status link with the slug
+      const statusLink = document.getElementById('link-status');
+      if (statusLink) {
+        statusLink.href = `/status.html?slug=${encodeURIComponent(submissionSlug)}`;
+      }
       goToStep('success');
     } else {
       showMessage(result.error || 'Kon inzending niet afronden.', 'error');

@@ -1,7 +1,7 @@
 # Privacyverklaring RegelRecht Upload Portal
 
 **Versie:** 1.0
-**Datum:** februari 2024
+**Datum:** februari 2026
 **Verwerkingsverantwoordelijke:** Ministerie van Binnenlandse Zaken en Koninkrijksrelaties (MinBZK)
 
 ---
@@ -108,14 +108,14 @@ Wij verwerken de volgende categorieën persoonsgegevens:
 
 ## 7. Bewaartermijn
 
-Uw persoonsgegevens worden bewaard **gedurende de looptijd van de PoC implementatie**. Dit betreft de periode die nodig is voor het uitvoeren van de Proof of Concept en het afronden van de daaruit voortvloeiende werkzaamheden.
+Uw persoonsgegevens worden bewaard tot **12 maanden na indiening**. De exacte vervaldatum van uw inzending wordt berekend op basis van het moment van indienen en is zichtbaar bij het opvragen van uw inzendingsstatus.
 
-Na afloop van de PoC implementatie worden uw gegevens verwijderd, tenzij:
+Na afloop van de bewaartermijn worden uw gegevens verwijderd, tenzij:
 - U expliciet toestemming geeft voor een langere bewaartermijn
 - Er een wettelijke verplichting bestaat om de gegevens langer te bewaren
 - De gegevens noodzakelijk zijn voor de afhandeling van een geschil
 
-De verwachte duur van de PoC implementatie wordt bij aanvang gecommuniceerd. U kunt te allen tijde informeren naar de actuele einddatum via bureau.architectuur@minbzk.nl.
+U kunt te allen tijde informeren naar de vervaldatum van uw inzending via bureau.architectuur@minbzk.nl of door de status van uw inzending op te vragen met uw referentiecode.
 
 Geaggregeerde, niet tot personen herleidbare onderzoeksresultaten kunnen voor onderzoeks- of beleidsonderzoeksdoeleinden worden bewaard.
 
@@ -218,4 +218,4 @@ E-mail: bureau.architectuur@minbzk.nl
 
 ---
 
-*Laatste update: februari 2024*
+*Laatste update: februari 2026*
