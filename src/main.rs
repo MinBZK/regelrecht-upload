@@ -185,7 +185,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             handlers::middleware::security_headers,
         ))
         .layer(TraceLayer::new_for_http())
-        .layer(DefaultBodyLimit::max(1024 * 1024)) // 1MB default for non-upload routes
         .layer(cors)
         .with_state(state);
 
