@@ -471,16 +471,13 @@ pub async fn upload_document(
             e,
             e.kind()
         );
-        let error_msg = match e.kind() {
-            std::io::ErrorKind::PermissionDenied => {
-                "Server storage permission error. Please contact support."
-            }
-            std::io::ErrorKind::OutOfMemory => "Server storage is full. Please contact support.",
-            _ => "Failed to store file. Please try again later.",
-        };
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(error_msg)),
+            Json(ApiResponse::error(format!(
+                "Failed to create storage directory: {} ({:?})",
+                e,
+                e.kind()
+            ))),
         );
     }
 
@@ -505,18 +502,13 @@ pub async fn upload_document(
             e,
             e.kind()
         );
-        let error_msg = match e.kind() {
-            std::io::ErrorKind::PermissionDenied => {
-                "Server storage permission error. Please contact support."
-            }
-            std::io::ErrorKind::OutOfMemory | std::io::ErrorKind::StorageFull => {
-                "Server storage is full. Please contact support."
-            }
-            _ => "Failed to store file. Please try again later.",
-        };
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(error_msg)),
+            Json(ApiResponse::error(format!(
+                "Failed to write file: {} ({:?})",
+                e,
+                e.kind()
+            ))),
         );
     }
 
