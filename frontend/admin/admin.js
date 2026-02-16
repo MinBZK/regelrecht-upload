@@ -217,7 +217,7 @@ function renderSubmissionDetail(sub) {
               </div>
               <div class="document-meta">
                 ${categoryLabels[doc.category] || doc.category} |
-                <span class="badge badge-${doc.classification === 'public' ? 'public' : doc.classification === 'claude_allowed' ? 'claude' : 'restricted'}">${doc.classification}</span>
+                <span class="badge badge-${doc.classification === 'public' ? 'public' : doc.classification === 'claude_allowed' ? 'claude' : 'restricted'}">${doc.classification === 'claude_allowed' ? 'Niet-EU AI toegestaan' : doc.classification}</span>
               </div>
             </div>
           </div>

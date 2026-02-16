@@ -88,7 +88,7 @@ function renderSubmissionStatus(sub) {
 
   const classificationLabels = {
     public: 'Publiek',
-    claude_allowed: 'AI toegestaan',
+    claude_allowed: 'Niet-EU AI toegestaan',
     restricted: 'Beperkt'
   };
 

@@ -55,8 +55,8 @@ CREATE TYPE document_category AS ENUM (
 -- Document classification enum
 CREATE TYPE document_classification AS ENUM (
     'public',           -- May be published publicly
-    'claude_allowed',   -- May be used with Claude/AI
-    'restricted'        -- Cannot be used with Claude
+    'claude_allowed',   -- May be processed by non-EU AI services
+    'restricted'        -- Cannot be processed by non-EU AI services
 );
 
 -- Documents table

@@ -97,7 +97,7 @@ Wij verwerken de volgende categorieën persoonsgegevens:
 ### 6.3 Documentinhoud
 - Door u geüploade documenten (circulaires, uitvoeringsbeleid, werkinstructies)
 - Links naar formele wetgeving op wetten.overheid.nl
-- Classificatie van documenten (publiek, Claude toegestaan, beperkt)
+- Classificatie van documenten (publiek, verwerking door niet-EU AI-diensten toegestaan, beperkt)
 
 ### 6.4 Technische gegevens
 - IP-adres (voor beveiliging en logging)
