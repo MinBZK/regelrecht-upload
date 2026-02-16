@@ -16,6 +16,7 @@ mod models;
 mod validation;
 
 use axum::{
+    extract::DefaultBodyLimit,
     middleware as axum_middleware,
     routing::{delete, get, post, put},
     Router,
@@ -25,7 +26,6 @@ use std::path::PathBuf;
 use tokio::fs;
 use tower_http::{
     cors::{Any, CorsLayer},
-    limit::RequestBodyLimitLayer,
     services::ServeDir,
     trace::TraceLayer,
 };
@@ -150,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/submissions/:slug/documents",
-            post(handlers::upload_document),
+            post(handlers::upload_document).layer(DefaultBodyLimit::max(config.max_upload_size)),
         )
         .route(
             "/submissions/:slug/formal-law",
@@ -185,7 +185,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             handlers::middleware::security_headers,
         ))
         .layer(TraceLayer::new_for_http())
-        .layer(RequestBodyLimitLayer::new(config.max_upload_size))
+        .layer(DefaultBodyLimit::max(1024 * 1024)) // 1MB default for non-upload routes
         .layer(cors)
         .with_state(state);
 
