@@ -72,14 +72,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("Upload directory write check: OK");
         }
         Err(e) => {
-            tracing::error!(
-                "Upload directory {:?} is not writable: {}",
-                upload_dir,
-                e
-            );
-            tracing::error!(
-                "If running in a container, ensure volume permissions are correct."
-            );
+            tracing::error!("Upload directory {:?} is not writable: {}", upload_dir, e);
+            tracing::error!("If running in a container, ensure volume permissions are correct.");
             tracing::error!(
                 "Fix: podman exec -u root <container> chown -R appuser:appuser /app/uploads"
             );
