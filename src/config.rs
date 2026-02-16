@@ -95,7 +95,7 @@ impl Config {
                 .or_else(|_| {
                     env::var("DATA_PATH").map(|p| format!("{}/uploads", p.trim_end_matches('/')))
                 })
-                .unwrap_or_else(|_| "/app/uploads".to_string()),
+                .unwrap_or_else(|_| "/data".to_string()),
             frontend_dir: env::var("FRONTEND_DIR").unwrap_or_else(|_| "./frontend".to_string()),
             session_expiry_hours: env::var("SESSION_EXPIRY_HOURS")
                 .ok()

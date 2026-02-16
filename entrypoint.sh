@@ -4,7 +4,7 @@
 
 set -e
 
-UPLOAD_DIR="${UPLOAD_DIR:-/app/uploads}"
+UPLOAD_DIR="${UPLOAD_DIR:-/data}"
 
 echo "RegelRecht Upload Portal starting..."
 echo "Checking upload directory: $UPLOAD_DIR"
@@ -32,7 +32,7 @@ if [ ! -w "$UPLOAD_DIR" ]; then
     echo ""
     echo "Or for podman-compose deployments, add this to compose.yaml:"
     echo "  volumes:"
-    echo "    - uploads:/app/uploads:U"
+    echo "    - uploads:/data:U"
     echo ""
     exit 1
 fi

@@ -58,15 +58,15 @@ COPY frontend /app/frontend
 COPY entrypoint.sh /app/entrypoint.sh
 
 # Create upload directory and set permissions
-RUN mkdir -p /app/uploads && \
+RUN mkdir -p /data && \
     chmod +x /app/entrypoint.sh && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app /data
 
 # Set environment defaults
 ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV FRONTEND_DIR=/app/frontend
-ENV UPLOAD_DIR=/app/uploads
+ENV UPLOAD_DIR=/data
 ENV RUST_LOG=info
 
 # Switch to non-root user

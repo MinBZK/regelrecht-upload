@@ -31,7 +31,7 @@ services:
       HOST: 0.0.0.0
       PORT: 8080
       ENVIRONMENT: development
-      UPLOAD_DIR: /app/uploads
+      UPLOAD_DIR: /data
       FRONTEND_DIR: /app/frontend
       MAX_UPLOAD_SIZE: 52428800  # 50MB
       SESSION_EXPIRY_HOURS: 8
@@ -39,7 +39,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - uploads:/app/uploads
+      - uploads:/data
     depends_on:
       postgres:
         condition: service_healthy
