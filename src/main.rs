@@ -59,10 +59,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Seed admin user from environment variables
     handlers::auth::seed_admin_user(&pool).await;
 
-    // Ensure upload directory exists
+    // Ensure upload directory exists and is writable
     let upload_dir = PathBuf::from(&config.upload_dir);
     fs::create_dir_all(&upload_dir).await?;
     tracing::info!("Upload directory: {:?}", upload_dir);
+
+    // Verify upload directory is writable (critical for container deployments)
+    let test_file = upload_dir.join(".write_test");
+    match fs::write(&test_file, b"test").await {
+        Ok(_) => {
+            let _ = fs::remove_file(&test_file).await;
+            tracing::info!("Upload directory write check: OK");
+        }
+        Err(e) => {
+            tracing::error!(
+                "Upload directory {:?} is not writable: {}",
+                upload_dir,
+                e
+            );
+            tracing::error!(
+                "If running in a container, ensure volume permissions are correct."
+            );
+            tracing::error!(
+                "Fix: podman exec -u root <container> chown -R appuser:appuser /app/uploads"
+            );
+            return Err(format!(
+                "Upload directory not writable: {}. Check volume permissions.",
+                e
+            )
+            .into());
+        }
+    }
 
     // Create application state
     let state = AppState {

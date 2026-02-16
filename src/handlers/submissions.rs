@@ -391,131 +391,192 @@ pub async fn upload_document(
         );
     }
 
-    // Process multipart upload (single file)
-    if let Ok(Some(field)) = multipart.next_field().await {
-        let original_filename = field.file_name().unwrap_or("unknown").to_string();
-        let content_type = field
-            .content_type()
-            .unwrap_or("application/octet-stream")
-            .to_string();
-
-        let data = match field.bytes().await {
-            Ok(d) => d,
-            Err(e) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiResponse::error(format!("Failed to read upload: {}", e))),
-                )
-            }
-        };
-
-        // Validate file
-        if let Err(e) = validate_file_upload(&content_type, data.len(), state.max_upload_size) {
+    // Process multipart upload (single file) with proper error handling
+    let field = match multipart.next_field().await {
+        Ok(Some(field)) => field,
+        Ok(None) => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ApiResponse::error(e.to_string())),
+                Json(ApiResponse::error("No file provided")),
             );
         }
-
-        // Validate filename doesn't contain dangerous extensions
-        if let Err(e) = validate_filename_extensions(&original_filename) {
+        Err(e) => {
+            tracing::error!("Multipart parsing error: {}", e);
+            // Provide user-friendly error messages for common issues
+            let error_msg = if e.to_string().contains("length limit") {
+                "File too large. Maximum upload size is 50MB."
+            } else if e.to_string().contains("content-type") {
+                "Invalid upload format. Please use multipart/form-data."
+            } else {
+                "Failed to process upload. Please try again."
+            };
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ApiResponse::error(e.to_string())),
+                Json(ApiResponse::error(format!("{} ({})", error_msg, e))),
             );
         }
+    };
 
-        // Create storage path
-        let doc_id = Uuid::new_v4();
-        let safe_filename = sanitize_filename(&original_filename);
-        let storage_filename = format!("{}_{}", doc_id, safe_filename);
-        let submission_dir = state.upload_dir.join(&slug);
+    let original_filename = field.file_name().unwrap_or("unknown").to_string();
+    let content_type = field
+        .content_type()
+        .unwrap_or("application/octet-stream")
+        .to_string();
 
-        // Create directory
-        if let Err(e) = fs::create_dir_all(&submission_dir).await {
-            tracing::error!("Failed to create upload directory: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error("Failed to store file")),
-            );
-        }
-
-        // Write file - verify path stays within upload directory
-        let file_path = submission_dir.join(&storage_filename);
-        if !file_path.starts_with(&state.upload_dir) {
-            tracing::error!(
-                "Path traversal attempt detected: {:?} escapes {:?}",
-                file_path,
-                state.upload_dir
-            );
+    let data = match field.bytes().await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::error!("Failed to read file bytes: {}", e);
+            let error_msg = if e.to_string().contains("length limit") {
+                "File too large. Maximum upload size is 50MB."
+            } else if e.to_string().contains("connection") {
+                "Connection interrupted during upload. Please try again."
+            } else {
+                "Failed to read uploaded file. Please try again."
+            };
             return (
                 StatusCode::BAD_REQUEST,
-                Json(ApiResponse::error("Invalid filename")),
+                Json(ApiResponse::error(format!("{} ({})", error_msg, e))),
             );
         }
-        if let Err(e) = fs::write(&file_path, &data).await {
-            tracing::error!("Failed to write file: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error("Failed to store file")),
-            );
-        }
+    };
 
-        // Store metadata in database
-        let result = sqlx::query_as::<_, Document>(
-            r#"
-            INSERT INTO documents (
-                id, submission_id, category, classification,
-                filename, original_filename, file_path, file_size, mime_type, description
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING *
-            "#,
-        )
-        .bind(doc_id)
-        .bind(submission.id)
-        .bind(query.category)
-        .bind(query.classification)
-        .bind(&storage_filename)
-        .bind(&original_filename)
-        .bind(file_path.to_string_lossy().to_string())
-        .bind(data.len() as i64)
-        .bind(&content_type)
-        .bind(&query.description)
-        .fetch_one(&state.pool)
-        .await;
-
-        match result {
-            Ok(doc) => {
-                log_audit(
-                    &state.pool,
-                    "document_uploaded",
-                    "document",
-                    Some(doc.id),
-                    "applicant",
-                    None,
-                )
-                .await;
-                (
-                    StatusCode::CREATED,
-                    Json(ApiResponse::success(DocumentResponse::from(doc))),
-                )
-            }
-            Err(e) => {
-                tracing::error!("Failed to store document metadata: {}", e);
-                // Clean up file
-                let _ = fs::remove_file(&file_path).await;
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ApiResponse::error("Failed to store document")),
-                )
-            }
-        }
-    } else {
-        (
+    // Validate file
+    if let Err(e) = validate_file_upload(&content_type, data.len(), state.max_upload_size) {
+        return (
             StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error("No file provided")),
+            Json(ApiResponse::error(e.to_string())),
+        );
+    }
+
+    // Validate filename doesn't contain dangerous extensions
+    if let Err(e) = validate_filename_extensions(&original_filename) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error(e.to_string())),
+        );
+    }
+
+    // Create storage path
+    let doc_id = Uuid::new_v4();
+    let safe_filename = sanitize_filename(&original_filename);
+    let storage_filename = format!("{}_{}", doc_id, safe_filename);
+    let submission_dir = state.upload_dir.join(&slug);
+
+    // Create directory with detailed error logging
+    if let Err(e) = fs::create_dir_all(&submission_dir).await {
+        tracing::error!(
+            "Failed to create upload directory {:?}: {} (kind: {:?})",
+            submission_dir,
+            e,
+            e.kind()
+        );
+        let error_msg = match e.kind() {
+            std::io::ErrorKind::PermissionDenied => {
+                "Server storage permission error. Please contact support."
+            }
+            std::io::ErrorKind::OutOfMemory => "Server storage is full. Please contact support.",
+            _ => "Failed to store file. Please try again later.",
+        };
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::error(error_msg)),
+        );
+    }
+
+    // Write file - verify path stays within upload directory
+    let file_path = submission_dir.join(&storage_filename);
+    if !file_path.starts_with(&state.upload_dir) {
+        tracing::error!(
+            "Path traversal attempt detected: {:?} escapes {:?}",
+            file_path,
+            state.upload_dir
+        );
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error("Invalid filename")),
+        );
+    }
+
+    if let Err(e) = fs::write(&file_path, &data).await {
+        tracing::error!(
+            "Failed to write file {:?}: {} (kind: {:?})",
+            file_path,
+            e,
+            e.kind()
+        );
+        let error_msg = match e.kind() {
+            std::io::ErrorKind::PermissionDenied => {
+                "Server storage permission error. Please contact support."
+            }
+            std::io::ErrorKind::OutOfMemory | std::io::ErrorKind::StorageFull => {
+                "Server storage is full. Please contact support."
+            }
+            _ => "Failed to store file. Please try again later.",
+        };
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::error(error_msg)),
+        );
+    }
+
+    // Store metadata in database
+    let result = sqlx::query_as::<_, Document>(
+        r#"
+        INSERT INTO documents (
+            id, submission_id, category, classification,
+            filename, original_filename, file_path, file_size, mime_type, description
         )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+        "#,
+    )
+    .bind(doc_id)
+    .bind(submission.id)
+    .bind(query.category)
+    .bind(query.classification)
+    .bind(&storage_filename)
+    .bind(&original_filename)
+    .bind(file_path.to_string_lossy().to_string())
+    .bind(data.len() as i64)
+    .bind(&content_type)
+    .bind(&query.description)
+    .fetch_one(&state.pool)
+    .await;
+
+    match result {
+        Ok(doc) => {
+            log_audit(
+                &state.pool,
+                "document_uploaded",
+                "document",
+                Some(doc.id),
+                "applicant",
+                None,
+            )
+            .await;
+            (
+                StatusCode::CREATED,
+                Json(ApiResponse::success(DocumentResponse::from(doc))),
+            )
+        }
+        Err(e) => {
+            tracing::error!("Failed to store document metadata: {}", e);
+            // Clean up file - log if cleanup fails
+            if let Err(cleanup_err) = fs::remove_file(&file_path).await {
+                tracing::warn!(
+                    "Failed to clean up orphaned file {:?}: {}",
+                    file_path,
+                    cleanup_err
+                );
+            }
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(
+                    "Failed to store document. Please try again.",
+                )),
+            )
+        }
     }
 }
 

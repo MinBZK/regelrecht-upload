@@ -184,6 +184,7 @@ async function handleUploadDocument() {
   const classification = document.getElementById('doc_classification').value;
   const fileUpload = document.getElementById('doc_file');
   const files = fileUpload.files;
+  const uploadBtn = document.getElementById('btn-upload-doc');
 
   if (!category || !classification || !files || files.length === 0) {
     showMessage('Selecteer categorie, classificatie en bestand.', 'error');
@@ -198,27 +199,76 @@ async function handleUploadDocument() {
   const formData = new FormData();
   formData.append('file', files[0]);
 
+  // Setup abort controller with 2 minute timeout for large files
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+  // Disable upload button during upload
+  uploadBtn.setAttribute('disabled', '');
+  uploadBtn.textContent = 'Bezig met uploaden...';
+
   try {
     const url = `/api/submissions/${submissionSlug}/documents?category=${category}&classification=${classification}`;
     const response = await fetch(url, {
       method: 'POST',
-      body: formData
+      body: formData,
+      signal: controller.signal
     });
 
-    const result = await response.json();
+    clearTimeout(timeoutId);
+
+    // Handle specific HTTP status codes
+    if (response.status === 413) {
+      showMessage('Bestand is te groot. Maximum grootte is 50MB.', 'error');
+      return;
+    }
+
+    if (response.status === 429) {
+      showMessage('Te veel uploads. Probeer het later opnieuw.', 'error');
+      return;
+    }
+
+    if (response.status >= 500) {
+      showMessage('Server fout. Probeer het later opnieuw of neem contact op met support.', 'error');
+      return;
+    }
+
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      showMessage('Onverwachte server response. Probeer het opnieuw.', 'error');
+      return;
+    }
+
     if (result.success) {
       documents.push(result.data);
       renderDocumentList();
       fileUpload.clearFiles();
       document.getElementById('doc_category').value = '';
       document.getElementById('doc_classification').value = '';
-      document.getElementById('btn-upload-doc').setAttribute('disabled', '');
       showMessage('Document geupload.', 'success');
     } else {
       showMessage(result.error || 'Kon document niet uploaden.', 'error');
     }
   } catch (e) {
-    showMessage('Kon geen verbinding maken met de server.', 'error');
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      showMessage('Upload timeout. Probeer het opnieuw met een kleiner bestand.', 'error');
+    } else if (e.message && e.message.includes('network')) {
+      showMessage('Netwerkfout tijdens upload. Controleer uw verbinding en probeer opnieuw.', 'error');
+    } else {
+      showMessage(`Upload mislukt: ${e.message || 'Onbekende fout'}`, 'error');
+    }
+  } finally {
+    // Reset upload button
+    uploadBtn.textContent = 'Document uploaden';
+    // Re-enable only if conditions are met
+    const currentClassification = document.getElementById('doc_classification').value;
+    const currentFiles = fileUpload.files;
+    if (currentFiles && currentFiles.length > 0 && currentClassification && currentClassification !== 'restricted') {
+      uploadBtn.removeAttribute('disabled');
+    }
   }
 }
 

@@ -54,8 +54,13 @@ COPY --from=builder /app/target/release/regelrecht-upload /app/regelrecht-upload
 # Copy frontend assets
 COPY frontend /app/frontend
 
-# Create upload directory
-RUN mkdir -p /app/uploads && chown -R appuser:appuser /app
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+
+# Create upload directory and set permissions
+RUN mkdir -p /app/uploads && \
+    chmod +x /app/entrypoint.sh && \
+    chown -R appuser:appuser /app
 
 # Set environment defaults
 ENV HOST=0.0.0.0
@@ -74,5 +79,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/faq || exit 1
 
-# Run the application
-CMD ["/app/regelrecht-upload"]
+# Use entrypoint script to verify permissions before starting
+ENTRYPOINT ["/app/entrypoint.sh"]
