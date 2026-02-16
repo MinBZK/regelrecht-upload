@@ -162,7 +162,6 @@ pub async fn get_submission(
                 created_at: submission.created_at,
                 updated_at: submission.updated_at,
                 submitted_at: submission.submitted_at,
-                retention_expiry_date: submission.retention_expiry_date,
                 documents: documents.into_iter().map(DocumentResponse::from).collect(),
             };
 

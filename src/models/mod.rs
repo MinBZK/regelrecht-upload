@@ -58,7 +58,6 @@ pub struct Submission {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub submitted_at: Option<DateTime<Utc>>,
-    pub retention_expiry_date: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,7 +90,6 @@ pub struct SubmissionResponse {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub submitted_at: Option<DateTime<Utc>>,
-    pub retention_expiry_date: DateTime<Utc>,
     pub documents: Vec<DocumentResponse>,
 }
 

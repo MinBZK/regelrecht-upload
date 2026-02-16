@@ -102,20 +102,7 @@ function renderSubmissionStatus(sub) {
     <span class="detail-value">${escapeHtml(sub.organization)}${sub.organization_department ? ' - ' + escapeHtml(sub.organization_department) : ''}</span>
   `;
 
-  // Status info with retention expiry date
-  const expiryDate = new Date(sub.retention_expiry_date);
-  const now = new Date();
-  const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-
-  let expiryClass = '';
-  let expiryWarning = '';
-  if (daysUntilExpiry <= 30) {
-    expiryClass = 'style="color: #dc2626;"';
-    expiryWarning = ` (nog ${daysUntilExpiry} dagen)`;
-  } else if (daysUntilExpiry <= 90) {
-    expiryClass = 'style="color: #d97706;"';
-  }
-
+  // Status info
   document.getElementById('submission-status').innerHTML = `
     <span class="detail-label">Status:</span>
     <span class="detail-value"><span class="status-badge status-${sub.status}">${statusLabels[sub.status] || sub.status}</span></span>
@@ -123,8 +110,6 @@ function renderSubmissionStatus(sub) {
     <span class="detail-value">${new Date(sub.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
     <span class="detail-label">Ingediend:</span>
     <span class="detail-value">${sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span>
-    <span class="detail-label">Vervaldatum gegevens:</span>
-    <span class="detail-value" ${expiryClass}>${expiryDate.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}${expiryWarning}</span>
   `;
 
   // Documents

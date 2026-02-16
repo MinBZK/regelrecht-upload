@@ -169,7 +169,6 @@ pub async fn list_submissions(
             created_at: sub.created_at,
             updated_at: sub.updated_at,
             submitted_at: sub.submitted_at,
-            retention_expiry_date: sub.retention_expiry_date,
             documents: documents.into_iter().map(DocumentResponse::from).collect(),
         });
     }
@@ -228,7 +227,6 @@ pub async fn get_submission_admin(
                 created_at: sub.created_at,
                 updated_at: sub.updated_at,
                 submitted_at: sub.submitted_at,
-                retention_expiry_date: sub.retention_expiry_date,
                 documents: documents.into_iter().map(DocumentResponse::from).collect(),
             };
 
@@ -460,7 +458,6 @@ pub async fn export_submission_json(
                 created_at: sub.created_at,
                 updated_at: sub.updated_at,
                 submitted_at: sub.submitted_at,
-                retention_expiry_date: sub.retention_expiry_date,
                 documents: documents.into_iter().map(DocumentResponse::from).collect(),
             };
 
@@ -551,7 +548,6 @@ pub async fn export_submission_files(
                         created_at: sub.created_at,
                         updated_at: sub.updated_at,
                         submitted_at: sub.submitted_at,
-                        retention_expiry_date: sub.retention_expiry_date,
                         documents: documents
                             .iter()
                             .cloned()

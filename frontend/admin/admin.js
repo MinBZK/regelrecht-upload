@@ -97,7 +97,6 @@ function renderSubmissionsTable(data) {
           <th>Status</th>
           <th>Documenten</th>
           <th>Datum</th>
-          <th>Vervaldatum</th>
           <th>Acties</th>
         </tr>
       </thead>
@@ -110,7 +109,6 @@ function renderSubmissionsTable(data) {
             <td><span class="status-badge status-${sub.status}">${statusLabels[sub.status] || sub.status}</span></td>
             <td>${sub.documents?.length || 0}</td>
             <td>${new Date(sub.created_at).toLocaleDateString('nl-NL')}</td>
-            <td>${new Date(sub.retention_expiry_date).toLocaleDateString('nl-NL')}</td>
             <td>
               <button class="action-btn" onclick="openSubmissionModal('${sub.id}')">Bekijken</button>
             </td>
@@ -202,8 +200,6 @@ function renderSubmissionDetail(sub) {
         <span class="detail-value">${new Date(sub.created_at).toLocaleString('nl-NL')}</span>
         <span class="detail-label">Ingediend:</span>
         <span class="detail-value">${sub.submitted_at ? new Date(sub.submitted_at).toLocaleString('nl-NL') : '-'}</span>
-        <span class="detail-label">Vervaldatum:</span>
-        <span class="detail-value">${new Date(sub.retention_expiry_date).toLocaleDateString('nl-NL')}</span>
       </div>
     </div>
 
