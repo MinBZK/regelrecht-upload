@@ -307,3 +307,47 @@ pub struct FaqItem {
     pub question: String,
     pub answer: String,
 }
+
+// =============================================================================
+// Uploader Session (Self-Service Access)
+// =============================================================================
+
+#[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
+pub struct UploaderSession {
+    pub id: Uuid,
+    pub submission_id: Uuid,
+    pub email: String,
+    pub token_hash: String,
+    pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub ip_address: Option<String>,
+    pub user_agent: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UploaderLoginRequest {
+    pub slug: String,
+    pub email: String,
+}
+
+/// Response for uploader session - excludes sensitive submitter info
+#[derive(Debug, Clone, Serialize)]
+pub struct UploaderSessionResponse {
+    pub submission_id: Uuid,
+    pub slug: String,
+    pub status: SubmissionStatus,
+    pub documents: Vec<DocumentResponse>,
+    pub session_expires_at: DateTime<Utc>,
+}
+
+/// Minimal submission info for uploader dashboard (privacy-focused)
+#[derive(Debug, Clone, Serialize)]
+pub struct UploaderSubmissionResponse {
+    pub id: Uuid,
+    pub slug: String,
+    pub status: SubmissionStatus,
+    pub created_at: DateTime<Utc>,
+    pub submitted_at: Option<DateTime<Utc>>,
+    pub documents: Vec<DocumentResponse>,
+}

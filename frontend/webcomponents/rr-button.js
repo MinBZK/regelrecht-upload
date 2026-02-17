@@ -80,11 +80,14 @@ export class RRButton extends RRLocalBase {
         <slot></slot>
       </button>
     `;
-    this.shadowRoot.querySelector('button').addEventListener('click', (e) => {
+    // Use onclick assignment instead of addEventListener to prevent duplicate listeners
+    // When onclick is assigned, it automatically replaces any previous handler
+    const btn = this.shadowRoot.querySelector('button');
+    btn.onclick = (e) => {
       if (!isDisabled) {
         this.dispatchEvent(new CustomEvent('click', { bubbles: true, composed: true }));
       }
-    });
+    };
   }
 }
 

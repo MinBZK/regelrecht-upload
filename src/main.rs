@@ -175,7 +175,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/admin/logout", post(handlers::admin_logout))
         .route("/admin/me", get(handlers::get_current_admin))
         // Protected admin routes
-        .nest("/admin", admin_routes);
+        .nest("/admin", admin_routes)
+        // Uploader self-service authentication (slug + email)
+        .route("/uploader/login", post(handlers::uploader_login))
+        .route("/uploader/logout", post(handlers::uploader_logout))
+        .route("/uploader/me", get(handlers::get_current_uploader));
 
     // Build main router
     let app = Router::new()
@@ -209,7 +213,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .execute(&cleanup_pool)
                 .await
             {
-                tracing::warn!("Failed to clean up expired sessions: {}", e);
+                tracing::warn!("Failed to clean up expired admin sessions: {}", e);
+            }
+            // Clean up expired uploader sessions
+            if let Err(e) = sqlx::query("DELETE FROM uploader_sessions WHERE expires_at < NOW()")
+                .execute(&cleanup_pool)
+                .await
+            {
+                tracing::warn!("Failed to clean up expired uploader sessions: {}", e);
             }
             tracing::debug!("Periodic cleanup completed");
         }

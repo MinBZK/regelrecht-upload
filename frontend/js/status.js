@@ -23,11 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   document.getElementById('btn-lookup').addEventListener('click', handleLookup);
   document.getElementById('btn-new-lookup').addEventListener('click', resetForm);
+  document.getElementById('btn-add-documents').addEventListener('click', handleAddDocuments);
 
   // Allow Enter key to submit
   slugInput.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleLookup();
   });
+}
+
+function handleAddDocuments() {
+  const slug = slugInput.value.trim();
+  window.location.href = `/uploader-login.html?slug=${encodeURIComponent(slug)}`;
 }
 
 async function handleLookup() {
@@ -111,6 +117,15 @@ function renderSubmissionStatus(sub) {
     <span class="detail-label">Ingediend:</span>
     <span class="detail-value">${sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span>
   `;
+
+  // Show "Add Documents" button if submission has email and is not draft
+  // (draft submissions can add documents without login via submit.html)
+  const addDocsBtn = document.getElementById('btn-add-documents');
+  if (sub.submitter_email && sub.status !== 'draft') {
+    addDocsBtn.style.display = 'inline-flex';
+  } else {
+    addDocsBtn.style.display = 'none';
+  }
 
   // Documents
   const docsContainer = document.getElementById('submission-documents');

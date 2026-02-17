@@ -3,6 +3,7 @@
 use crate::handlers::auth::{
     check_rate_limit_with_max, get_client_ip, record_attempt, MAX_SUBMISSION_ATTEMPTS,
 };
+use crate::handlers::uploader_auth::validate_uploader_session;
 use crate::models::*;
 use crate::validation::{
     validate_classification_for_upload, validate_create_submission, validate_external_url,
@@ -336,6 +337,7 @@ pub struct UploadDocumentQuery {
 /// Upload a document
 pub async fn upload_document(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
     Query(query): Query<UploadDocumentQuery>,
     mut multipart: Multipart,
@@ -389,13 +391,23 @@ pub async fn upload_document(
         }
     };
 
+    // Authorization check:
+    // - Draft submissions: anyone with the slug can upload (existing behavior)
+    // - Non-draft submissions: require valid uploader session for this specific submission
     if submission.status != SubmissionStatus::Draft {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error(
-                "Cannot upload to a submitted submission",
-            )),
-        );
+        match validate_uploader_session(&state.pool, &headers).await {
+            Some((session_submission, _)) if session_submission.id == submission.id => {
+                // Valid session for this submission - allow upload
+            }
+            _ => {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    Json(ApiResponse::error(
+                        "Inloggen vereist om documenten toe te voegen aan een ingediende inzending.",
+                    )),
+                );
+            }
+        }
     }
 
     // Process multipart upload (single file) with proper error handling
@@ -582,6 +594,7 @@ pub async fn upload_document(
 /// Add a formal law link
 pub async fn add_formal_law(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
     Json(input): Json<CreateFormalLaw>,
 ) -> impl IntoResponse {
@@ -612,13 +625,23 @@ pub async fn add_formal_law(
         }
     };
 
+    // Authorization check:
+    // - Draft submissions: anyone with the slug can add laws (existing behavior)
+    // - Non-draft submissions: require valid uploader session for this specific submission
     if submission.status != SubmissionStatus::Draft {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error(
-                "Cannot add documents to a submitted submission",
-            )),
-        );
+        match validate_uploader_session(&state.pool, &headers).await {
+            Some((session_submission, _)) if session_submission.id == submission.id => {
+                // Valid session for this submission - allow adding law
+            }
+            _ => {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    Json(ApiResponse::error(
+                        "Inloggen vereist om documenten toe te voegen aan een ingediende inzending.",
+                    )),
+                );
+            }
+        }
     }
 
     // Formal laws are always public
@@ -668,6 +691,7 @@ pub async fn add_formal_law(
 /// Delete a document
 pub async fn delete_document(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path((slug, doc_id)): Path<(String, Uuid)>,
 ) -> impl IntoResponse {
     if let Err(e) = validate_slug(&slug) {
@@ -688,13 +712,23 @@ pub async fn delete_document(
         }
     };
 
+    // Authorization check:
+    // - Draft submissions: anyone with the slug can delete (existing behavior)
+    // - Non-draft submissions: require valid uploader session for this specific submission
     if submission.status != SubmissionStatus::Draft {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::error(
-                "Cannot delete documents from a submitted submission",
-            )),
-        );
+        match validate_uploader_session(&state.pool, &headers).await {
+            Some((session_submission, _)) if session_submission.id == submission.id => {
+                // Valid session for this submission - allow deletion
+            }
+            _ => {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    Json(ApiResponse::error(
+                        "Inloggen vereist om documenten te verwijderen van een ingediende inzending.",
+                    )),
+                );
+            }
+        }
     }
 
     // Get document

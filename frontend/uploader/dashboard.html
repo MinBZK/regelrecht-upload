@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mijn Inzending - RegelRecht Upload Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .session-info {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .session-info .slug {
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+    .upload-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--color-slate-200);
+    }
+    .classification-warning {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      display: none;
+    }
+    .classification-warning.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Upload Portal</span>
+      </a>
+      <nav class="nav-links">
+        <rr-button variant="secondary" id="btn-logout" style="padding: 6px 16px;">Uitloggen</rr-button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 class="page-title">Mijn Inzending</h1>
+    <p class="page-subtitle">Voeg documenten toe aan uw inzending</p>
+
+    <div id="status-message" class="status-message" style="display: none;"></div>
+
+    <!-- Session info bar -->
+    <div class="session-info">
+      <div>
+        <span>Referentiecode: </span>
+        <span class="slug" id="display-slug">-</span>
+        <span style="margin-left: 16px;">Status: </span>
+        <span class="status-badge" id="display-status">-</span>
+      </div>
+      <div style="font-size: 0.875rem; color: var(--color-slate-600);">
+        Sessie verloopt: <span id="display-expires">-</span>
+      </div>
+    </div>
+
+    <!-- Documents List -->
+    <div class="card">
+      <h2 class="card-title">Documenten</h2>
+      <div id="document-list">
+        <p style="color: var(--color-slate-500); text-align: center; padding: 20px;">
+          Laden...
+        </p>
+      </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="card upload-section">
+      <h2 class="card-title">Document Toevoegen</h2>
+
+      <!-- Formal Law Section -->
+      <div style="margin-bottom: 24px;">
+        <h3 style="font-size: 1rem; margin-bottom: 12px;">Formele Wet (link)</h3>
+        <p style="font-size: 0.875rem; color: var(--color-slate-600); margin-bottom: 12px;">
+          Voeg een link toe naar een wet op wetten.overheid.nl
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">URL naar wetten.overheid.nl</label>
+          <rr-text-field id="formal_law_url" name="formal_law_url" placeholder="https://wetten.overheid.nl/..."></rr-text-field>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Titel (optioneel)</label>
+          <rr-text-field id="formal_law_title" name="formal_law_title" placeholder="Bijv. Algemene wet bestuursrecht"></rr-text-field>
+        </div>
+
+        <rr-button variant="secondary" id="btn-add-law">Wet toevoegen</rr-button>
+      </div>
+
+      <!-- File Upload Section -->
+      <div>
+        <h3 style="font-size: 1rem; margin-bottom: 12px;">Document Uploaden</h3>
+        <p style="font-size: 0.875rem; color: var(--color-slate-600); margin-bottom: 12px;">
+          Upload circulaires, uitvoeringsbeleid of werkinstructies
+        </p>
+
+        <div class="form-group">
+          <label class="form-label required">Categorie</label>
+          <rr-select-field id="doc_category" name="doc_category">
+            <option value="">Selecteer categorie</option>
+            <option value="circular">Circulaire</option>
+            <option value="implementation_policy">Uitvoeringsbeleid</option>
+            <option value="work_instruction">Werkinstructie</option>
+          </rr-select-field>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">Classificatie</label>
+          <rr-select-field id="doc_classification" name="doc_classification">
+            <option value="">Selecteer classificatie</option>
+            <option value="public">Publiek - mag gepubliceerd worden</option>
+            <option value="claude_allowed">Niet-EU AI toegestaan - mag met AI tools</option>
+            <option value="restricted">Beperkt - NIET voor AI gebruik</option>
+          </rr-select-field>
+        </div>
+
+        <div id="classification-warning" class="classification-warning">
+          <strong>Let op:</strong> Documenten met classificatie 'Beperkt' kunnen niet worden geüpload naar dit portaal.
+          Kies een andere classificatie of upload dit document niet.
+        </div>
+
+        <div class="form-group" id="upload-area">
+          <label class="form-label required">Bestand</label>
+          <rr-file-upload id="doc_file" name="doc_file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,.odt,.ods"></rr-file-upload>
+          <p class="help-text">Maximaal 50MB. Toegestane formaten: PDF, Word, Excel, tekst.</p>
+        </div>
+
+        <rr-button variant="primary" id="btn-upload-doc" disabled>Document uploaden</rr-button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <span>&copy; 2026 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties</span>
+      <nav class="footer-links">
+        <a href="/privacy.html">Privacyverklaring</a>
+        <a href="/faq.html">FAQ</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module" src="/js/uploader-auth.js"></script>
+</body>
+</html>

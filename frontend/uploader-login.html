@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inloggen - RegelRecht Upload Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/" class="logo">
+        <span class="logo-text">RegelRecht</span>
+        <span class="logo-subtitle">Upload Portal</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/submit.html">Nieuwe inzending</a>
+        <a href="/status.html">Status opvragen</a>
+        <a href="/faq.html">FAQ</a>
+        <a href="/privacy.html">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" style="max-width: 450px;">
+    <h1 class="page-title">Documenten Toevoegen</h1>
+    <p class="page-subtitle">Log in met uw referentiecode en e-mailadres om documenten aan uw inzending toe te voegen.</p>
+
+    <div id="status-message" class="status-message" style="display: none;"></div>
+
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label required">Referentiecode</label>
+        <rr-text-field id="slug" name="slug" placeholder="rr-20260217-xxxxx"></rr-text-field>
+        <p class="help-text">De referentiecode heeft u ontvangen na uw inzending.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label required">E-mailadres</label>
+        <rr-text-field id="email" name="email" type="email" placeholder="uw@email.nl"></rr-text-field>
+        <p class="help-text">Het e-mailadres dat u bij uw inzending heeft opgegeven.</p>
+      </div>
+
+      <div class="button-group">
+        <rr-button variant="primary" id="btn-login" style="width: 100%;">Inloggen</rr-button>
+      </div>
+    </div>
+
+    <p style="text-align: center; margin-top: 24px;">
+      <a href="/status.html" style="color: var(--color-primary);">Alleen status bekijken?</a>
+    </p>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <span>&copy; 2026 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties</span>
+      <nav class="footer-links">
+        <a href="/privacy.html">Privacyverklaring</a>
+        <a href="/faq.html">FAQ</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script type="module" src="/webcomponents/index.js"></script>
+  <script type="module">
+    // Check if already logged in
+    fetch('/api/uploader/me', { credentials: 'include' })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          window.location.href = '/uploader/dashboard.html';
+        }
+      });
+
+    // Pre-fill slug from URL params (e.g., from status page)
+    const urlParams = new URLSearchParams(window.location.search);
+    const slugParam = urlParams.get('slug');
+    if (slugParam) {
+      document.getElementById('slug').value = slugParam;
+    }
+
+    // Login handler
+    document.getElementById('btn-login').addEventListener('click', async () => {
+      const slug = document.getElementById('slug').value.trim();
+      const email = document.getElementById('email').value.trim();
+
+      if (!slug || !email) {
+        showMessage('Vul referentiecode en e-mailadres in.', 'error');
+        return;
+      }
+
+      // Basic email validation
+      if (!email.includes('@') || !email.includes('.')) {
+        showMessage('Vul een geldig e-mailadres in.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-login');
+      btn.setAttribute('loading', '');
+
+      try {
+        const response = await fetch('/api/uploader/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, email }),
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          window.location.href = '/uploader/dashboard.html';
+        } else {
+          showMessage(result.error || 'Inloggen mislukt.', 'error');
+        }
+      } catch (e) {
+        showMessage('Kon geen verbinding maken met de server.', 'error');
+      } finally {
+        btn.removeAttribute('loading');
+      }
+    });
+
+    // Allow Enter key to submit
+    document.querySelectorAll('rr-text-field').forEach(field => {
+      field.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+          document.getElementById('btn-login').click();
+        }
+      });
+    });
+
+    function showMessage(text, type) {
+      const el = document.getElementById('status-message');
+      el.textContent = text;
+      el.className = `status-message ${type}`;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+  </script>
+</body>
+</html>
