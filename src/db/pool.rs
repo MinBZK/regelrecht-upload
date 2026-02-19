@@ -112,7 +112,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     // This prevents re-running 001_initial on servers where it already ran
     let submissions_exists: Option<(String,)> = sqlx::query_as(
         "SELECT table_name::text FROM information_schema.tables
-         WHERE table_schema = 'public' AND table_name = 'submissions'"
+         WHERE table_schema = 'public' AND table_name = 'submissions'",
     )
     .fetch_optional(pool)
     .await?;
@@ -121,7 +121,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
         // Schema exists - ensure 001_initial is marked as applied
         sqlx::query(
             "INSERT INTO _migrations (name) VALUES ('001_initial')
-             ON CONFLICT (name) DO NOTHING"
+             ON CONFLICT (name) DO NOTHING",
         )
         .execute(pool)
         .await?;
@@ -131,8 +131,14 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Define all migrations in order
     let migrations = [
         ("001_initial", include_str!("migrations/001_initial.sql")),
-        ("003_retention_date", include_str!("migrations/003_retention_date.sql")),
-        ("004_uploader_sessions", include_str!("migrations/004_uploader_sessions.sql")),
+        (
+            "003_retention_date",
+            include_str!("migrations/003_retention_date.sql"),
+        ),
+        (
+            "004_uploader_sessions",
+            include_str!("migrations/004_uploader_sessions.sql"),
+        ),
     ];
 
     for (name, sql) in migrations {

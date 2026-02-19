@@ -59,7 +59,9 @@ pub async fn uploader_login(
         return (
             StatusCode::BAD_REQUEST,
             [(header::SET_COOKIE, "".to_string())],
-            Json(ApiResponse::error("Vul zowel referentiecode als e-mailadres in.")),
+            Json(ApiResponse::error(
+                "Vul zowel referentiecode als e-mailadres in.",
+            )),
         );
     }
 
