@@ -80,14 +80,8 @@ export class RRButton extends RRLocalBase {
         <slot></slot>
       </button>
     `;
-    // Use onclick assignment instead of addEventListener to prevent duplicate listeners
-    // When onclick is assigned, it automatically replaces any previous handler
-    const btn = this.shadowRoot.querySelector('button');
-    btn.onclick = (e) => {
-      if (!isDisabled) {
-        this.dispatchEvent(new CustomEvent('click', { bubbles: true, composed: true }));
-      }
-    };
+    // Native click events are "composed" and automatically bubble through shadow DOM
+    // No need to dispatch a custom event - that would cause duplicate events!
   }
 }
 

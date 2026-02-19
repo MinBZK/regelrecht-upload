@@ -42,6 +42,9 @@ export class RRTextField extends RRLocalBase {
   }
 
   _onInput(event) {
+    // Stop native event - we'll dispatch our own with detail.value
+    // This prevents duplicate events since native 'input' is composed
+    event.stopPropagation();
     this.dispatchEvent(new CustomEvent('input', {
       detail: { value: event.target.value },
       bubbles: true,
@@ -50,6 +53,9 @@ export class RRTextField extends RRLocalBase {
   }
 
   _onChange(event) {
+    // Stop native event - we'll dispatch our own with detail.value
+    // This prevents duplicate events since native 'change' is composed
+    event.stopPropagation();
     this.setAttribute('value', event.target.value);
     this.dispatchEvent(new CustomEvent('change', {
       detail: { value: event.target.value },

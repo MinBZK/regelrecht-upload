@@ -96,7 +96,10 @@ export class RRFileUpload extends RRLocalBase {
       dropzone.classList.remove('dragover');
       if (!this.disabled) this._handleFiles(e.dataTransfer.files);
     });
-    input.addEventListener('change', (e) => this._handleFiles(e.target.files));
+    input.addEventListener('change', (e) => {
+      e.stopPropagation(); // Stop native event from hidden input
+      this._handleFiles(e.target.files);
+    });
   }
 
   _handleFiles(fileList) {
