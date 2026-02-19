@@ -108,6 +108,26 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Handle legacy databases: if schema exists but wasn't tracked, mark as applied
+    // This prevents re-running 001_initial on servers where it already ran
+    let submissions_exists: Option<(String,)> = sqlx::query_as(
+        "SELECT table_name::text FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'submissions'"
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if submissions_exists.is_some() {
+        // Schema exists - ensure 001_initial is marked as applied
+        sqlx::query(
+            "INSERT INTO _migrations (name) VALUES ('001_initial')
+             ON CONFLICT (name) DO NOTHING"
+        )
+        .execute(pool)
+        .await?;
+        tracing::info!("Legacy schema detected, marked 001_initial as applied");
+    }
+
     // Define all migrations in order
     let migrations = [
         ("001_initial", include_str!("migrations/001_initial.sql")),
