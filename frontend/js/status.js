@@ -98,14 +98,10 @@ function renderSubmissionStatus(sub) {
     restricted: 'Beperkt'
   };
 
-  // Submission info
+  // Submission info (naam en organisatie niet tonen voor privacy)
   document.getElementById('submission-info').innerHTML = `
     <span class="detail-label">Referentiecode:</span>
     <span class="detail-value"><code>${escapeHtml(sub.slug)}</code></span>
-    <span class="detail-label">Naam:</span>
-    <span class="detail-value">${escapeHtml(sub.submitter_name)}</span>
-    <span class="detail-label">Organisatie:</span>
-    <span class="detail-value">${escapeHtml(sub.organization)}${sub.organization_department ? ' - ' + escapeHtml(sub.organization_department) : ''}</span>
   `;
 
   // Status info

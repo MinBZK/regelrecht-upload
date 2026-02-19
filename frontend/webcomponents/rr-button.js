@@ -17,14 +17,14 @@ export class RRButton extends RRLocalBase {
 
   _getStyles() {
     return `
-      :host { display: inline-block; font-family: var(--rr-font-family-sans, system-ui, sans-serif); }
+      :host { display: inline-block; font-family: var(--rr-font-family-sans, 'RijksoverheidSans', system-ui, sans-serif); }
       .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: var(--spacing-2, 8px);
         padding: 10px 20px;
-        border-radius: 7px;
+        border-radius: var(--border-radius-md, 6px);
         font-size: 1rem;
         font-weight: 500;
         font-family: inherit;
@@ -38,8 +38,8 @@ export class RRButton extends RRLocalBase {
         border-color: var(--color-primary, #154273);
       }
       .btn.primary:hover:not(:disabled) {
-        background: #0f3562;
-        border-color: #0f3562;
+        background: var(--color-primary-hover, #1a5490);
+        border-color: var(--color-primary-hover, #1a5490);
       }
       .btn.secondary {
         background: #fff;

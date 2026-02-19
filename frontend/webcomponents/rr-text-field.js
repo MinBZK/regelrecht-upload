@@ -73,22 +73,22 @@ export class RRTextField extends RRLocalBase {
 
   _getStyles() {
     return `
-      :host { display: block; font-family: var(--rr-font-family-sans, 'RijksSansVF', system-ui, sans-serif); }
+      :host { display: block; font-family: var(--rr-font-family-sans, 'RijksoverheidSans', system-ui, sans-serif); }
       :host([hidden]) { display: none; }
       .input {
         width: 100%;
-        padding: 8px 12px;
-        border: 2px solid var(--color-slate-600, #475569);
-        border-radius: 7px;
+        padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+        border: 2px solid var(--color-border, #e2e8f0);
+        border-radius: var(--border-radius-md, 6px);
         font-size: 0.875rem;
         font-family: inherit;
         background: var(--color-white, #fff);
-        color: var(--color-slate-900, #0f172a);
+        color: var(--color-text-primary, #0f172a);
         box-sizing: border-box;
       }
       .input:focus { outline: 2px solid var(--color-primary, #154273); outline-offset: -2px; }
-      .input:disabled { opacity: 0.6; cursor: not-allowed; background: #f1f5f9; }
-      .input::placeholder { color: #94a3b8; }
+      .input:disabled { opacity: 0.6; cursor: not-allowed; background: var(--color-slate-100, #f1f5f9); }
+      .input::placeholder { color: var(--color-slate-400, #94a3b8); }
     `;
   }
 

@@ -22,44 +22,44 @@ export class RRFileUpload extends RRLocalBase {
 
   _getStyles() {
     return `
-      :host { display: block; font-family: var(--rr-font-family-sans, system-ui, sans-serif); }
+      :host { display: block; font-family: var(--rr-font-family-sans, 'RijksoverheidSans', system-ui, sans-serif); }
       .dropzone {
-        border: 2px dashed #94a3b8;
-        border-radius: 8px;
-        padding: 32px;
+        border: 2px dashed var(--color-slate-400, #94a3b8);
+        border-radius: var(--border-radius-lg, 8px);
+        padding: var(--spacing-8, 32px);
         text-align: center;
         transition: all 0.2s;
         cursor: pointer;
-        background: #f8fafc;
+        background: var(--color-slate-50, #f8fafc);
       }
       .dropzone:hover, .dropzone.dragover {
         border-color: var(--color-primary, #154273);
         background: #eff6ff;
       }
       .dropzone.disabled { opacity: 0.5; cursor: not-allowed; }
-      .icon { font-size: 48px; margin-bottom: 16px; color: #64748b; }
-      .title { font-weight: 600; color: #334155; margin-bottom: 8px; }
-      .subtitle { font-size: 0.875rem; color: #64748b; }
+      .icon { font-size: 48px; margin-bottom: var(--spacing-4, 16px); color: var(--color-text-secondary, #64748b); }
+      .title { font-weight: 600; color: var(--color-slate-700, #334155); margin-bottom: var(--spacing-2, 8px); }
+      .subtitle { font-size: 0.875rem; color: var(--color-text-secondary, #64748b); }
       .file-input { display: none; }
-      .file-list { margin-top: 16px; }
+      .file-list { margin-top: var(--spacing-4, 16px); }
       .file-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 8px 12px;
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        margin-bottom: 8px;
+        padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+        background: var(--color-white, #fff);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: var(--border-radius-md, 6px);
+        margin-bottom: var(--spacing-2, 8px);
       }
-      .file-name { font-size: 0.875rem; color: #334155; }
-      .file-size { font-size: 0.75rem; color: #64748b; margin-left: 8px; }
+      .file-name { font-size: 0.875rem; color: var(--color-slate-700, #334155); }
+      .file-size { font-size: 0.75rem; color: var(--color-text-secondary, #64748b); margin-left: var(--spacing-2, 8px); }
       .remove-btn {
         background: none;
         border: none;
         color: #ef4444;
         cursor: pointer;
-        padding: 4px 8px;
+        padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
         font-size: 0.875rem;
       }
       .remove-btn:hover { text-decoration: underline; }

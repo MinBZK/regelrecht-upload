@@ -433,10 +433,7 @@ mod tests {
     #[test]
     fn test_extract_uploader_session_token_wrong_cookie() {
         let mut headers = HeaderMap::new();
-        headers.insert(
-            header::COOKIE,
-            "rr_admin_session=abc123".parse().unwrap(),
-        );
+        headers.insert(header::COOKIE, "rr_admin_session=abc123".parse().unwrap());
         assert_eq!(extract_uploader_session_token(&headers), None);
     }
 }

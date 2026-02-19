@@ -108,37 +108,45 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
-    // Check if migration already applied
-    let already_applied: Option<(String,)> =
-        sqlx::query_as("SELECT name FROM _migrations WHERE name = $1")
-            .bind("001_initial")
-            .fetch_optional(pool)
+    // Define all migrations in order
+    let migrations = [
+        ("001_initial", include_str!("migrations/001_initial.sql")),
+        ("003_retention_date", include_str!("migrations/003_retention_date.sql")),
+        ("004_uploader_sessions", include_str!("migrations/004_uploader_sessions.sql")),
+    ];
+
+    for (name, sql) in migrations {
+        // Check if already applied
+        let already_applied: Option<(String,)> =
+            sqlx::query_as("SELECT name FROM _migrations WHERE name = $1")
+                .bind(name)
+                .fetch_optional(pool)
+                .await?;
+
+        if already_applied.is_some() {
+            tracing::debug!("Migration {} already applied, skipping", name);
+            continue;
+        }
+
+        tracing::info!("Applying migration: {}", name);
+
+        // Split and execute statements
+        let statements = split_sql_statements(sql);
+        for statement in &statements {
+            sqlx::query(statement).execute(pool).await.map_err(|e| {
+                tracing::error!("Migration {} failed: {}", name, e);
+                e
+            })?;
+        }
+
+        // Record as applied
+        sqlx::query("INSERT INTO _migrations (name) VALUES ($1)")
+            .bind(name)
+            .execute(pool)
             .await?;
 
-    if already_applied.is_some() {
-        tracing::info!("Migration 001_initial already applied, skipping");
-        return Ok(());
+        tracing::info!("Migration {} applied successfully", name);
     }
 
-    // Read and execute the migration file
-    let migration_sql = include_str!("migrations/001_initial.sql");
-
-    // Split into statements, properly handling $$ blocks
-    let statements = split_sql_statements(migration_sql);
-
-    for statement in &statements {
-        sqlx::query(statement).execute(pool).await.map_err(|e| {
-            tracing::error!("Migration statement failed: {}", e);
-            e
-        })?;
-    }
-
-    // Record migration as applied
-    sqlx::query("INSERT INTO _migrations (name) VALUES ($1)")
-        .bind("001_initial")
-        .execute(pool)
-        .await?;
-
-    tracing::info!("Database migration 001_initial applied successfully");
     Ok(())
 }

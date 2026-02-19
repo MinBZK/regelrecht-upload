@@ -3,8 +3,10 @@
  */
 
 :root {
+  /* Colors - Base palette */
   --color-primary: #154273;
   --color-primary-dark: #0f3562;
+  --color-primary-hover: #1a5490;
   --color-secondary: #39870c;
   --color-white: #ffffff;
   --color-slate-50: #f8fafc;
@@ -18,9 +20,32 @@
   --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
 
-  --rr-font-family-sans: 'RijksSansVF', system-ui, -apple-system, sans-serif;
-  --border-radius-md: 7px;
-  --border-radius-lg: 12px;
+  /* Semantic color aliases */
+  --color-border: var(--color-slate-200);
+  --color-text-primary: var(--color-slate-900);
+  --color-text-secondary: var(--color-slate-500);
+
+  /* Typography */
+  --rr-font-family-sans: 'RijksoverheidSans', system-ui, -apple-system, sans-serif;
+  --rr-font-family-serif: 'RijksoverheidSerif', Georgia, serif;
+
+  /* Spacing tokens */
+  --spacing-0: 0;
+  --spacing-0-5: 2px;
+  --spacing-1: 4px;
+  --spacing-1-5: 6px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+
+  /* Border radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 8px;
+
+  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
 }
@@ -42,7 +67,7 @@ body {
 .header {
   background: var(--color-primary);
   color: var(--color-white);
-  padding: 16px 24px;
+  padding: var(--spacing-4) var(--spacing-6);
   box-shadow: var(--shadow-md);
 }
 
@@ -57,7 +82,7 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-3);
   text-decoration: none;
   color: inherit;
 }
@@ -74,7 +99,7 @@ body {
 
 .nav-links {
   display: flex;
-  gap: 24px;
+  gap: var(--spacing-6);
 }
 
 .nav-links a {
@@ -93,21 +118,21 @@ body {
 .main {
   max-width: 900px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: var(--spacing-8) var(--spacing-6);
 }
 
 /* Page Title */
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--color-slate-900);
-  margin-bottom: 8px;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-2);
 }
 
 .page-subtitle {
   font-size: 1.125rem;
   color: var(--color-slate-600);
-  margin-bottom: 32px;
+  margin-bottom: var(--spacing-8);
 }
 
 /* Cards */
@@ -115,16 +140,16 @@ body {
   background: var(--color-white);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-slate-200);
-  padding: 24px;
-  margin-bottom: 24px;
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
 }
 
 .card-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-slate-800);
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-4);
 }
 
 /* Form */
@@ -136,7 +161,7 @@ body {
   display: block;
   font-weight: 500;
   color: var(--color-slate-700);
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-1-5);
   font-size: 0.875rem;
 }
 
@@ -147,22 +172,22 @@ body {
 
 .form-hint {
   font-size: 0.75rem;
-  color: var(--color-slate-500);
-  margin-top: 4px;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-1);
 }
 
 /* Checkbox label styling */
 .checkbox-label {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--spacing-2);
   cursor: pointer;
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
 .checkbox-label input[type="checkbox"] {
-  margin-top: 4px;
+  margin-top: var(--spacing-1);
   flex-shrink: 0;
 }
 
@@ -174,13 +199,13 @@ body {
 /* Steps */
 .steps {
   display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-8);
 }
 
 .step {
   flex: 1;
-  padding: 16px;
+  padding: var(--spacing-4);
   background: var(--color-slate-100);
   border-radius: var(--border-radius-md);
   text-align: center;
@@ -198,15 +223,15 @@ body {
 }
 
 .step-number {
-  width: 32px;
-  height: 32px;
+  width: var(--spacing-8);
+  height: var(--spacing-8);
   background: var(--color-slate-300);
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-2);
 }
 
 .step.active .step-number {
@@ -228,23 +253,23 @@ body {
 .document-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-3);
 }
 
 .document-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: var(--spacing-4);
   background: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
 }
 
 .document-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-3);
 }
 
 .document-icon {
@@ -270,8 +295,8 @@ body {
 
 .badge {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-sm);
   font-size: 0.75rem;
   font-weight: 500;
 }
@@ -283,15 +308,15 @@ body {
 /* Button Group */
 .button-group {
   display: flex;
-  gap: 12px;
-  margin-top: 24px;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-6);
 }
 
 /* Footer */
 .footer {
   background: var(--color-slate-800);
   color: var(--color-white);
-  padding: 32px 24px;
+  padding: var(--spacing-8) var(--spacing-6);
   margin-top: 64px;
 }
 
@@ -305,7 +330,7 @@ body {
 
 .footer-links {
   display: flex;
-  gap: 24px;
+  gap: var(--spacing-6);
 }
 
 .footer-links a {
@@ -320,9 +345,9 @@ body {
 
 /* Status Messages */
 .status-message {
-  padding: 16px;
+  padding: var(--spacing-4);
   border-radius: var(--border-radius-md);
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-6);
 }
 
 .status-message.success {
@@ -341,17 +366,17 @@ body {
 .faq-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-4);
 }
 
 .faq-item {
-  border: 1px solid var(--color-slate-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
   overflow: hidden;
 }
 
 .faq-question {
-  padding: 16px;
+  padding: var(--spacing-4);
   background: var(--color-slate-50);
   font-weight: 500;
   cursor: pointer;
@@ -361,7 +386,7 @@ body {
 }
 
 .faq-answer {
-  padding: 16px;
+  padding: var(--spacing-4);
   display: none;
 }
 
@@ -373,7 +398,7 @@ body {
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
-    gap: 16px;
+    gap: var(--spacing-4);
     text-align: center;
   }
 
@@ -383,7 +408,7 @@ body {
 
   .footer-content {
     flex-direction: column;
-    gap: 16px;
+    gap: var(--spacing-4);
     text-align: center;
   }
 }
