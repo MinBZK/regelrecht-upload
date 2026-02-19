@@ -113,7 +113,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Admin routes (protected by middleware)
     let admin_routes = Router::new()
         .route("/submissions", get(handlers::list_submissions))
-        .route("/submissions/:id", get(handlers::get_submission_admin))
+        .route(
+            "/submissions/:id",
+            get(handlers::get_submission_admin).delete(handlers::delete_submission),
+        )
         .route(
             "/submissions/:id/status",
             put(handlers::update_submission_status),
@@ -195,6 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Spawn periodic cleanup task
     let cleanup_pool = pool.clone();
+    let cleanup_upload_dir = PathBuf::from(&config.upload_dir);
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
         loop {
@@ -221,6 +225,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
             {
                 tracing::warn!("Failed to clean up expired uploader sessions: {}", e);
+            }
+            // Clean up abandoned draft submissions (older than 1 hour)
+            if let Err(e) =
+                handlers::cleanup_abandoned_drafts(&cleanup_pool, &cleanup_upload_dir).await
+            {
+                tracing::warn!("Failed to clean up abandoned drafts: {}", e);
             }
             tracing::debug!("Periodic cleanup completed");
         }

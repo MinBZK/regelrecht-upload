@@ -375,6 +375,98 @@ pub async fn forward_submission(
     }
 }
 
+/// Delete a submission (admin)
+pub async fn delete_submission(
+    State(state): State<AppState>,
+    Extension(admin): Extension<AdminUser>,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // 1. Fetch the submission to get the slug for file cleanup
+    let submission = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await;
+
+    match submission {
+        Ok(Some(sub)) => {
+            // 2. Delete files from disk before database cascade
+            let submission_dir = state.upload_dir.join(&sub.slug);
+            if submission_dir.exists() {
+                if let Err(e) = tokio::fs::remove_dir_all(&submission_dir).await {
+                    tracing::warn!(
+                        "Failed to remove submission directory {:?}: {}",
+                        submission_dir,
+                        e
+                    );
+                    // Continue with database deletion even if file cleanup fails
+                }
+            }
+
+            // 3. Delete from database (CASCADE handles documents + uploader_sessions)
+            let delete_result = sqlx::query("DELETE FROM submissions WHERE id = $1")
+                .bind(id)
+                .execute(&state.pool)
+                .await;
+
+            match delete_result {
+                Ok(_) => {
+                    // 4. Log audit event
+                    let _ = sqlx::query(
+                        r#"
+                        INSERT INTO audit_log (action, entity_type, entity_id, actor_type, actor_id, details)
+                        VALUES ('data_deleted'::audit_action, 'submission', $1, 'admin', $2, $3)
+                        "#,
+                    )
+                    .bind(id)
+                    .bind(admin.id)
+                    .bind(serde_json::json!({
+                        "slug": sub.slug,
+                        "submitter_name": sub.submitter_name,
+                        "organization": sub.organization,
+                        "deleted_by": admin.username
+                    }))
+                    .execute(&state.pool)
+                    .await;
+
+                    tracing::info!(
+                        "Admin {} deleted submission {} ({})",
+                        admin.username,
+                        id,
+                        sub.slug
+                    );
+
+                    (
+                        StatusCode::OK,
+                        Json(ApiResponse::success(serde_json::json!({
+                            "deleted": true,
+                            "id": id,
+                            "slug": sub.slug
+                        }))),
+                    )
+                }
+                Err(e) => {
+                    tracing::error!("Failed to delete submission: {}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiResponse::error("Failed to delete submission")),
+                    )
+                }
+            }
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::error("Submission not found")),
+        ),
+        Err(e) => {
+            tracing::error!("Database error: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error("Database error")),
+            )
+        }
+    }
+}
+
 /// Get admin dashboard statistics
 pub async fn get_dashboard_stats(
     State(state): State<AppState>,
@@ -629,4 +721,56 @@ pub async fn export_submission_files(
                 .unwrap()
         }
     }
+}
+
+// =============================================================================
+// Maintenance Functions
+// =============================================================================
+
+/// Clean up abandoned draft submissions older than 1 hour
+///
+/// This function is called periodically from the cleanup task in main.rs.
+/// It removes draft submissions that were never submitted, including their
+/// files from disk.
+pub async fn cleanup_abandoned_drafts(
+    pool: &sqlx::PgPool,
+    upload_dir: &std::path::Path,
+) -> Result<u64, sqlx::Error> {
+    // 1. Find and delete drafts older than 1 hour, returning the deleted rows
+    //    This is atomic - no race condition between finding and deleting
+    let deleted_drafts = sqlx::query_as::<_, Submission>(
+        r#"
+        DELETE FROM submissions
+        WHERE status = 'draft'
+        AND created_at < NOW() - INTERVAL '1 hour'
+        RETURNING *
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    if deleted_drafts.is_empty() {
+        return Ok(0);
+    }
+
+    let count = deleted_drafts.len();
+
+    // 2. Delete files from disk for each deleted draft
+    //    Safe because these drafts are already deleted from DB
+    for draft in &deleted_drafts {
+        let draft_dir = upload_dir.join(&draft.slug);
+        if draft_dir.exists() {
+            if let Err(e) = tokio::fs::remove_dir_all(&draft_dir).await {
+                tracing::warn!(
+                    "Failed to remove abandoned draft directory {:?}: {}",
+                    draft_dir,
+                    e
+                );
+            }
+        }
+    }
+
+    tracing::info!("Cleaned up {} abandoned draft submissions", count);
+
+    Ok(count as u64)
 }

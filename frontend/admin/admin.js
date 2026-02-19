@@ -239,6 +239,7 @@ function renderSubmissionDetail(sub) {
         </rr-select-field>
         <rr-button variant="primary" onclick="updateStatus('${sub.id}')">Status bijwerken</rr-button>
         <rr-button variant="secondary" onclick="forwardSubmission('${sub.id}')">Doorsturen naar team</rr-button>
+        <rr-button variant="danger" onclick="deleteSubmission('${sub.id}')">Verwijderen</rr-button>
       </div>
     </div>
 
@@ -276,6 +277,29 @@ export async function updateStatus(id) {
     }
   } catch (e) {
     alert('Fout bij bijwerken status.');
+  }
+}
+
+export async function deleteSubmission(id) {
+  if (!confirm('Weet u zeker dat u deze inzending wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/admin/submissions/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      closeModal();
+      loadSubmissions(currentPage);
+    } else {
+      alert(result.error || 'Kon inzending niet verwijderen.');
+    }
+  } catch (e) {
+    alert('Fout bij verwijderen inzending.');
   }
 }
 
@@ -429,7 +453,8 @@ export async function exportSubmissionFiles(id) {
   }
 }
 
-// Make loadSubmissions globally available for pagination
+// Make functions globally available for onclick handlers
 window.loadSubmissions = loadSubmissions;
 window.exportSubmissionJson = exportSubmissionJson;
 window.exportSubmissionFiles = exportSubmissionFiles;
+window.deleteSubmission = deleteSubmission;
