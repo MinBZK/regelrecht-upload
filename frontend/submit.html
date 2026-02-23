@@ -14,185 +14,249 @@
         <span class="logo-text">RegelRecht</span>
         <span class="logo-subtitle">Upload Portal</span>
       </a>
-      <nav class="nav-links">
-        <a href="/submit.html">Nieuwe inzending</a>
-        <a href="/status.html">Status opvragen</a>
-        <a href="/faq.html">FAQ</a>
-        <a href="/privacy.html">Privacy</a>
-      </nav>
     </div>
   </header>
 
   <main class="main">
-    <h1 class="page-title">Nieuwe Inzending</h1>
-    <p class="page-subtitle">Vul onderstaand formulier in om uw documenten in te dienen</p>
+    <h1 class="page-title">Deel uw beleidsdocumenten</h1>
+    <p class="page-subtitle">Volg de stappen om uw documenten in te dienen voor het RegelRecht onderzoeksproject</p>
 
     <div id="status-message" class="status-message" style="display: none;"></div>
 
-    <!-- Step indicators -->
-    <div class="steps">
-      <div class="step active" data-step="1">
-        <div class="step-number">1</div>
-        <div class="step-title">Contactgegevens</div>
-      </div>
-      <div class="step" data-step="2">
-        <div class="step-number">2</div>
-        <div class="step-title">Documenten</div>
-      </div>
-      <div class="step" data-step="3">
-        <div class="step-number">3</div>
-        <div class="step-title">Planning</div>
-      </div>
-    </div>
+    <!-- Progress Bar -->
+    <rr-progress-bar id="progress-bar" current="1"></rr-progress-bar>
 
-    <!-- Step 1: Contact Information -->
-    <div id="step-1" class="card">
-      <h2 class="card-title">Uw gegevens</h2>
+    <!-- Step 1: Privacy Consent (CRITICAL - Must be first per legal requirements) -->
+    <div id="step-1" class="card step-panel">
+      <h2 class="card-title">Privacyverklaring</h2>
 
-      <div class="form-group">
-        <label class="form-label required">Naam</label>
-        <rr-text-field id="submitter_name" name="submitter_name" placeholder="Uw volledige naam" required></rr-text-field>
-      </div>
+      <div class="privacy-content">
+        <p>Voordat u uw documenten kunt indienen, vragen wij u kennis te nemen van hoe wij met uw gegevens omgaan.</p>
 
-      <div class="form-group">
-        <label class="form-label">E-mailadres</label>
-        <rr-text-field id="submitter_email" name="submitter_email" type="email" placeholder="uw.email@organisatie.nl"></rr-text-field>
-        <span class="form-hint">Optioneel, voor statusupdates</span>
-      </div>
+        <div class="info-block">
+          <h3>Wat doen wij met uw gegevens?</h3>
+          <ul>
+            <li>Uw contactgegevens worden uitsluitend gebruikt om contact met u op te nemen over uw inzending</li>
+            <li>De ingediende documenten worden geanalyseerd voor het RegelRecht onderzoeksproject</li>
+            <li>Uw gegevens worden bewaard zolang nodig voor de Proof of Concept fase</li>
+            <li>Wij delen uw gegevens niet met derden zonder uw toestemming</li>
+          </ul>
+          <p style="margin-top: 12px;">
+            <a href="/privacy.html" target="_blank">Lees de volledige privacyverklaring →</a>
+          </p>
+        </div>
 
-      <div class="form-group">
-        <label class="form-label required">Organisatie</label>
-        <rr-text-field id="organization" name="organization" placeholder="Naam van uw organisatie" required></rr-text-field>
-      </div>
+        <div class="consent-section">
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="consent_privacy" required>
+              <span>Ik heb de privacyverklaring gelezen en ga akkoord met de verwerking van mijn gegevens</span>
+            </label>
+          </div>
 
-      <div class="form-group">
-        <label class="form-label">Afdeling</label>
-        <rr-text-field id="organization_department" name="organization_department" placeholder="Optioneel"></rr-text-field>
-      </div>
-
-      <div class="form-group" style="margin-top: 24px;">
-        <label class="checkbox-label">
-          <input type="checkbox" id="consent_privacy" required>
-          <span>Ik heb de <a href="/privacy.html" target="_blank">privacyverklaring</a> gelezen en ga akkoord met de verwerking van mijn gegevens voor de PoC implementatie.</span>
-        </label>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="consent_documents" required>
+              <span>Ik geef toestemming voor het gebruik van de door mij geüploade documenten voor het RegelRecht onderzoeksproject</span>
+            </label>
+          </div>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input type="checkbox" id="consent_documents" required>
-          <span>Ik geef toestemming voor het gebruik van de door mij geüploade documenten voor het RegelRecht onderzoeksproject.</span>
-        </label>
-      </div>
-
-      <div class="button-group">
-        <rr-button variant="primary" id="btn-next-1">Volgende</rr-button>
+      <div class="button-group button-group-end">
+        <rr-button variant="primary" id="btn-next-1">Verder naar documenten</rr-button>
       </div>
     </div>
 
     <!-- Step 2: Documents -->
-    <div id="step-2" class="card" style="display: none;">
-      <h2 class="card-title">Documenten uploaden</h2>
+    <div id="step-2" class="card step-panel" style="display: none;">
+      <a href="#" class="back-link" id="btn-back-2">← Terug naar privacy</a>
+
+      <h2 class="card-title">Documenten toevoegen</h2>
+      <p class="step-intro">Voeg de documenten toe die u wilt indienen. De bestanden worden pas geüpload bij de definitieve inzending.</p>
 
       <!-- Add formal law link -->
-      <div class="card" style="background: var(--color-slate-50); margin-bottom: 20px;">
-        <h3 style="font-size: 1rem; margin-bottom: 12px;">Formele wet toevoegen</h3>
-        <div class="form-group">
-          <label class="form-label">Link naar wetten.overheid.nl</label>
-          <rr-text-field id="formal_law_url" placeholder="https://wetten.overheid.nl/..."></rr-text-field>
+      <div class="inner-card">
+        <h3 class="inner-card-title">Titel van de wet</h3>
+        <p class="field-hint">Verwijs naar de formele wet op wetten.overheid.nl</p>
+
+        <div class="form-row">
+          <div class="form-group form-group-grow">
+            <label class="form-label" for="formal_law_url">Link naar wetten.overheid.nl</label>
+            <rr-text-field id="formal_law_url" name="formal_law_url"></rr-text-field>
+          </div>
+          <div class="form-group" style="flex-shrink: 0;">
+            <label class="form-label">&nbsp;</label>
+            <rr-button variant="secondary" id="btn-add-law">Voeg link toe</rr-button>
+          </div>
         </div>
+
         <div class="form-group">
-          <label class="form-label">Titel (optioneel)</label>
-          <rr-text-field id="formal_law_title" placeholder="Naam van de wet"></rr-text-field>
+          <label class="form-label" for="formal_law_title">Titel (optioneel)</label>
+          <rr-text-field id="formal_law_title" name="formal_law_title"></rr-text-field>
         </div>
-        <rr-button variant="secondary" id="btn-add-law">Link toevoegen</rr-button>
       </div>
 
       <!-- Upload other documents -->
-      <div class="card" style="background: var(--color-slate-50);">
-        <h3 style="font-size: 1rem; margin-bottom: 12px;">Document uploaden</h3>
+      <div class="inner-card">
+        <h3 class="inner-card-title">Upload document</h3>
+        <p class="field-hint">Accepteert PDF, Word, en tekstbestanden (max. 50MB)</p>
 
         <div class="form-group">
-          <label class="form-label required">Categorie</label>
-          <rr-select-field id="doc_category" required>
-            <option value="">Selecteer categorie...</option>
-            <option value="circular">Circulaire</option>
-            <option value="implementation_policy">Uitvoeringsbeleid</option>
-            <option value="work_instruction">Werkinstructie</option>
-          </rr-select-field>
+          <label class="form-label">Type document</label>
+          <rr-toggle-group
+            id="doc_category"
+            name="category"
+            options='[{"value": "circular", "label": "Circulaire"}, {"value": "implementation_policy", "label": "Beleidsregel"}, {"value": "work_instruction", "label": "Instructie"}]'
+            required
+          ></rr-toggle-group>
         </div>
 
         <div class="form-group">
-          <label class="form-label required">Classificatie</label>
-          <rr-select-field id="doc_classification" required>
-            <option value="">Selecteer classificatie...</option>
-            <option value="public">Publiek - Mag gepubliceerd worden</option>
-            <option value="claude_allowed">Verwerking door niet-EU AI-diensten toegestaan</option>
-            <option value="restricted">Beperkt - Niet met AI gebruiken</option>
-          </rr-select-field>
+          <label class="form-label">Classificatie</label>
+          <rr-toggle-group
+            id="doc_classification"
+            name="classification"
+            options='[{"value": "public", "label": "Openbaar"}, {"value": "claude_allowed", "label": "AI-verwerking toegestaan"}, {"value": "restricted", "label": "Beperkt", "variant": "danger"}]'
+            required
+          ></rr-toggle-group>
         </div>
 
-        <div id="classification-warning" style="display: none;">
-          <rr-help-text variant="error">
-            <strong>Let op:</strong> Documenten met classificatie "Beperkt" kunnen niet worden geupload naar dit portaal.
-            Deze documenten mogen niet worden gebruikt met AI-tools. Selecteer een andere classificatie of upload dit document niet.
-          </rr-help-text>
+        <div id="classification-warning" class="warning-box" style="display: none;">
+          <strong>Let op:</strong> Documenten met classificatie "Beperkt" kunnen niet worden geüpload naar dit portaal.
+          Deze documenten mogen niet worden gebruikt met AI-tools.
         </div>
 
         <div id="upload-area" class="form-group">
-          <label class="form-label">Bestand</label>
+          <label class="form-label">Bestand selecteren</label>
           <rr-file-upload id="doc_file"></rr-file-upload>
         </div>
 
-        <rr-button variant="secondary" id="btn-upload-doc" disabled>Document uploaden</rr-button>
+        <rr-button variant="secondary" id="btn-add-doc" disabled>Voeg document toe</rr-button>
       </div>
 
-      <!-- Uploaded documents list -->
-      <h3 style="font-size: 1rem; margin: 20px 0 12px;">Toegevoegde documenten</h3>
+      <!-- Staged documents list -->
+      <h3 class="section-title">Geselecteerde documenten</h3>
+      <p class="field-hint">Deze documenten worden lokaal bewaard tot de definitieve inzending</p>
       <div id="document-list" class="document-list">
-        <p style="color: var(--color-slate-500); text-align: center; padding: 20px;">
-          Nog geen documenten toegevoegd
-        </p>
+        <p class="empty-state">Nog geen documenten toegevoegd</p>
       </div>
 
-      <div class="button-group">
-        <rr-button variant="secondary" id="btn-back-2">Terug</rr-button>
-        <rr-button variant="primary" id="btn-next-2">Volgende</rr-button>
+      <div class="button-group button-group-end">
+        <rr-button variant="primary" id="btn-next-2">Verder naar planning</rr-button>
       </div>
     </div>
 
     <!-- Step 3: Schedule meeting -->
-    <div id="step-3" class="card" style="display: none;">
+    <div id="step-3" class="card step-panel" style="display: none;">
+      <a href="#" class="back-link" id="btn-back-3">← Terug naar documenten</a>
+
       <h2 class="card-title">Gesprek inplannen</h2>
+      <p class="step-intro">Selecteer een tijdslot voor een gesprek om de resultaten van de verkenning te bespreken. Het is nuttig als inhoudelijk juridische experts aanschuiven.</p>
 
-      <rr-help-text variant="info">
-        Plan een gesprek in om de resultaten van de verkenning te bespreken. Het is nuttig als inhoudelijk juridische experts aanschuiven.
-      </rr-help-text>
-
-      <div id="available-slots" style="margin-top: 20px;">
-        <p style="color: var(--color-slate-500);">Beschikbare tijdsloten worden geladen...</p>
+      <div id="available-slots" class="slots-container">
+        <p class="loading-state">Beschikbare tijdsloten worden geladen...</p>
       </div>
 
-      <div class="button-group">
-        <rr-button variant="secondary" id="btn-back-3">Terug</rr-button>
-        <rr-button variant="primary" id="btn-submit">Inzending afronden</rr-button>
+      <div class="button-group button-group-end">
+        <rr-button variant="primary" id="btn-next-3">Verder naar gegevens</rr-button>
+      </div>
+    </div>
+
+    <!-- Step 4: Contact Information -->
+    <div id="step-4" class="card step-panel" style="display: none;">
+      <a href="#" class="back-link" id="btn-back-4">← Terug naar planning</a>
+
+      <h2 class="card-title">Uw contactgegevens</h2>
+      <p class="step-intro">Vul uw gegevens in zodat wij contact met u kunnen opnemen over uw inzending.</p>
+
+      <div class="form-row">
+        <div class="form-group form-group-grow">
+          <label class="form-label" for="submitter_name">Naam</label>
+          <rr-text-field id="submitter_name" name="submitter_name" required></rr-text-field>
+        </div>
+        <div class="form-group form-group-grow">
+          <label class="form-label" for="submitter_email">E-mailadres</label>
+          <rr-text-field id="submitter_email" name="submitter_email" type="email" required></rr-text-field>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group form-group-grow">
+          <label class="form-label" for="organization">Organisatie</label>
+          <rr-text-field id="organization" name="organization" required></rr-text-field>
+        </div>
+        <div class="form-group form-group-grow">
+          <label class="form-label" for="organization_department">Afdeling (optioneel)</label>
+          <rr-text-field id="organization_department" name="organization_department"></rr-text-field>
+        </div>
+      </div>
+
+      <div class="button-group button-group-end">
+        <rr-button variant="primary" id="btn-next-4">Verder naar bevestiging</rr-button>
+      </div>
+    </div>
+
+    <!-- Step 5: Summary / Confirmation -->
+    <div id="step-5" class="card step-panel" style="display: none;">
+      <a href="#" class="back-link" id="btn-back-5">← Terug naar gegevens</a>
+
+      <h2 class="card-title">Controleer uw inzending</h2>
+      <p class="step-intro">Controleer onderstaande gegevens en rond uw inzending af. Na bevestiging worden alle documenten geüpload.</p>
+
+      <!-- Documents Summary -->
+      <div class="summary-card">
+        <div class="summary-header">
+          <h3 class="summary-title">Documenten</h3>
+          <button type="button" class="edit-link" id="edit-documents">Wijzig</button>
+        </div>
+        <div id="summary-documents" class="summary-content">
+          <p class="empty-state">Geen documenten toegevoegd</p>
+        </div>
+      </div>
+
+      <!-- Planning Summary -->
+      <div class="summary-card">
+        <div class="summary-header">
+          <h3 class="summary-title">Geplande afspraak</h3>
+          <button type="button" class="edit-link" id="edit-planning">Wijzig</button>
+        </div>
+        <div id="summary-planning" class="summary-content">
+          <p class="empty-state">Geen tijdslot geselecteerd</p>
+        </div>
+      </div>
+
+      <!-- Contact Summary -->
+      <div class="summary-card">
+        <div class="summary-header">
+          <h3 class="summary-title">Contactgegevens</h3>
+          <button type="button" class="edit-link" id="edit-contact">Wijzig</button>
+        </div>
+        <div id="summary-contact" class="summary-content">
+          <p class="empty-state">Geen gegevens ingevuld</p>
+        </div>
+      </div>
+
+      <div class="button-group button-group-center">
+        <rr-button variant="primary" id="btn-submit">Rond inzending af</rr-button>
       </div>
     </div>
 
     <!-- Success message -->
-    <div id="step-success" class="card" style="display: none; text-align: center;">
-      <div style="font-size: 4rem; margin-bottom: 16px;">✓</div>
+    <div id="step-success" class="card step-panel" style="display: none; text-align: center;">
+      <div class="success-icon">✓</div>
       <h2 class="card-title">Inzending succesvol!</h2>
-      <p style="margin-bottom: 16px;">Uw inzending is ontvangen. U kunt de status volgen met onderstaande referentie:</p>
-      <div style="background: var(--color-slate-100); padding: 16px; border-radius: 8px; font-family: monospace; font-size: 1.25rem;" id="submission-slug"></div>
-      <p style="margin-top: 16px; color: var(--color-slate-600);">Bewaar deze referentie om uw inzending later op te kunnen vragen.</p>
-      <div class="button-group" style="justify-content: center; margin-top: 24px;">
+      <p>Uw inzending is ontvangen. U kunt de status volgen met onderstaande referentie:</p>
+      <div class="reference-code" id="submission-slug"></div>
+      <p class="hint-text">Bewaar deze referentie om uw inzending later op te kunnen vragen.</p>
+      <div class="button-group button-group-center">
         <a href="/" id="link-home"><rr-button variant="secondary">Terug naar home</rr-button></a>
         <a href="/status.html" id="link-status"><rr-button variant="primary">Bekijk status</rr-button></a>
       </div>
     </div>
   </main>
 
-  <footer class="footer">
+  <footer class="footer footer-legal">
     <div class="footer-content">
       <span>&copy; 2026 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties</span>
       <nav class="footer-links">

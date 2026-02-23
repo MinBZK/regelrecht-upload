@@ -1,190 +1,239 @@
 /**
- * Submission form logic
+ * Submission form logic - 5-step wizard with client-side file staging
+ *
+ * CRITICAL DATA PROTECTION:
+ * - Files are staged client-side only during Steps 1-4
+ * - NO server uploads until final submission in Step 5
+ * - All data uploaded atomically with contact info
  */
 
-// State
-let currentStep = 1;
-let submissionSlug = null;
-let submissionId = null;
-let documents = [];
-let selectedSlotId = null;
+// =============================================================================
+// STATE
+// =============================================================================
 
-// Elements
-const steps = document.querySelectorAll('.step');
-const stepPanels = {
-  1: document.getElementById('step-1'),
-  2: document.getElementById('step-2'),
-  3: document.getElementById('step-3'),
-  success: document.getElementById('step-success')
+let currentStep = 1;
+const totalSteps = 5;
+
+// Client-side staged data (NOT uploaded to server until final submit)
+const stagedData = {
+  // Privacy consent
+  consentPrivacy: false,
+  consentDocuments: false,
+
+  // Staged documents (stored as File objects, not uploaded)
+  documents: [], // Array of { id, file, category, classification, previewUrl }
+  formalLaws: [], // Array of { id, url, title }
+
+  // Selected time slot
+  selectedSlot: null, // { id, start, end }
+
+  // Contact information
+  contact: {
+    name: '',
+    email: '',
+    organization: '',
+    department: ''
+  }
 };
 
-// Initialize
+// Unique ID counter for staged items
+let stagedIdCounter = 0;
+
+// =============================================================================
+// ELEMENTS
+// =============================================================================
+
+const stepPanels = {
+  1: () => document.getElementById('step-1'),
+  2: () => document.getElementById('step-2'),
+  3: () => document.getElementById('step-3'),
+  4: () => document.getElementById('step-4'),
+  5: () => document.getElementById('step-5'),
+  success: () => document.getElementById('step-success')
+};
+
+// =============================================================================
+// INITIALIZATION
+// =============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
+  loadAvailableSlots();
 });
 
 function setupEventListeners() {
-  // Navigation buttons
-  document.getElementById('btn-next-1').addEventListener('click', handleStep1Next);
-  document.getElementById('btn-back-2').addEventListener('click', () => goToStep(1));
-  document.getElementById('btn-next-2').addEventListener('click', () => goToStep(3));
-  document.getElementById('btn-back-3').addEventListener('click', () => goToStep(2));
-  document.getElementById('btn-submit').addEventListener('click', handleSubmit);
+  // Step 1: Privacy
+  document.getElementById('btn-next-1')?.addEventListener('click', handleStep1Next);
 
-  // Document upload
-  document.getElementById('btn-add-law').addEventListener('click', handleAddFormalLaw);
-  document.getElementById('btn-upload-doc').addEventListener('click', handleUploadDocument);
+  // Step 2: Documents
+  document.getElementById('btn-back-2')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(1); });
+  document.getElementById('btn-next-2')?.addEventListener('click', () => goToStep(3));
+  document.getElementById('btn-add-law')?.addEventListener('click', handleAddFormalLaw);
+  document.getElementById('btn-add-doc')?.addEventListener('click', handleStageDocument);
 
-  // Classification change
-  const classificationSelect = document.getElementById('doc_classification');
-  classificationSelect.addEventListener('change', handleClassificationChange);
+  // Category and Classification toggle change
+  document.getElementById('doc_category')?.addEventListener('change', handleFileChange);
+  document.getElementById('doc_classification')?.addEventListener('change', handleClassificationChange);
 
   // File selection
-  const fileUpload = document.getElementById('doc_file');
-  fileUpload.addEventListener('change', handleFileChange);
+  document.getElementById('doc_file')?.addEventListener('change', handleFileChange);
+
+  // Step 3: Planning
+  document.getElementById('btn-back-3')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(2); });
+  document.getElementById('btn-next-3')?.addEventListener('click', () => goToStep(4));
+
+  // Step 4: Contact
+  document.getElementById('btn-back-4')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(3); });
+  document.getElementById('btn-next-4')?.addEventListener('click', handleStep4Next);
+
+  // Step 5: Summary
+  document.getElementById('btn-back-5')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(4); });
+  document.getElementById('btn-submit')?.addEventListener('click', handleFinalSubmit);
+
+  // Edit links in summary
+  document.getElementById('edit-documents')?.addEventListener('click', () => goToStep(2));
+  document.getElementById('edit-planning')?.addEventListener('click', () => goToStep(3));
+  document.getElementById('edit-contact')?.addEventListener('click', () => goToStep(4));
 }
+
+// =============================================================================
+// NAVIGATION
+// =============================================================================
 
 function goToStep(step) {
   currentStep = step;
 
-  // Update step indicators
-  steps.forEach((s, i) => {
-    const stepNum = i + 1;
-    s.classList.remove('active', 'completed');
-    if (stepNum < step) s.classList.add('completed');
-    if (stepNum === step) s.classList.add('active');
-  });
+  // Update progress bar
+  const progressBar = document.getElementById('progress-bar');
+  if (progressBar) {
+    progressBar.setAttribute('current', step);
+  }
 
   // Show/hide panels
-  Object.entries(stepPanels).forEach(([key, panel]) => {
-    panel.style.display = (key == step) ? 'block' : 'none';
+  Object.entries(stepPanels).forEach(([key, getPanelFn]) => {
+    const panel = getPanelFn();
+    if (panel) {
+      panel.style.display = (key == step) ? 'block' : 'none';
+    }
   });
 
-  // Load data for step 3
+  // Step-specific actions
   if (step === 3) {
     loadAvailableSlots();
+  } else if (step === 5) {
+    renderSummary();
   }
+
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-async function handleStep1Next() {
-  const name = document.getElementById('submitter_name').value.trim();
-  const email = document.getElementById('submitter_email').value.trim();
-  const org = document.getElementById('organization').value.trim();
-  const dept = document.getElementById('organization_department').value.trim();
+// =============================================================================
+// STEP 1: PRIVACY CONSENT
+// =============================================================================
 
-  // Consent checkboxes valideren
+function handleStep1Next() {
   const consentPrivacy = document.getElementById('consent_privacy').checked;
   const consentDocuments = document.getElementById('consent_documents').checked;
 
-  if (!name || !org) {
-    showMessage('Vul alle verplichte velden in.', 'error');
-    return;
-  }
-
   if (!consentPrivacy || !consentDocuments) {
-    showMessage('U moet akkoord gaan met de privacyverklaring en toestemming geven voor documentgebruik.', 'error');
+    showMessage('U moet akkoord gaan met beide voorwaarden om verder te gaan.', 'error');
     return;
   }
 
-  // Create submission
-  try {
-    const response = await fetch('/api/submissions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        submitter_name: name,
-        submitter_email: email || null,
-        organization: org,
-        organization_department: dept || null
-      })
-    });
+  // Store consent in staged data
+  stagedData.consentPrivacy = consentPrivacy;
+  stagedData.consentDocuments = consentDocuments;
 
-    const result = await response.json();
-    if (result.success) {
-      submissionSlug = result.data.slug;
-      submissionId = result.data.id;
-      goToStep(2);
-    } else {
-      showMessage(result.error || 'Er ging iets mis.', 'error');
-    }
-  } catch (e) {
-    showMessage('Kon geen verbinding maken met de server.', 'error');
-  }
+  goToStep(2);
 }
 
-async function handleAddFormalLaw() {
-  const url = document.getElementById('formal_law_url').value.trim();
-  const title = document.getElementById('formal_law_title').value.trim();
+// =============================================================================
+// STEP 2: DOCUMENTS (CLIENT-SIDE STAGING ONLY)
+// =============================================================================
+
+function handleAddFormalLaw() {
+  const urlField = document.getElementById('formal_law_url');
+  const titleField = document.getElementById('formal_law_title');
+  const url = urlField.value.trim();
+  const title = titleField.value.trim();
 
   if (!url) {
     showMessage('Vul een URL in.', 'error');
     return;
   }
 
-  try {
-    const response = await fetch(`/api/submissions/${submissionSlug}/formal-law`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        external_url: url,
-        external_title: title || null
-      })
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      documents.push(result.data);
-      renderDocumentList();
-      document.getElementById('formal_law_url').value = '';
-      document.getElementById('formal_law_title').value = '';
-      showMessage('Wet toegevoegd.', 'success');
-    } else {
-      showMessage(result.error || 'Kon wet niet toevoegen.', 'error');
-    }
-  } catch (e) {
-    showMessage('Kon geen verbinding maken met de server.', 'error');
+  // Validate URL format
+  if (!url.startsWith('https://wetten.overheid.nl/')) {
+    showMessage('Gebruik een URL van wetten.overheid.nl', 'error');
+    return;
   }
+
+  // Stage the formal law (client-side only!)
+  const formalLaw = {
+    id: `law_${++stagedIdCounter}`,
+    url,
+    title: title || extractTitleFromUrl(url)
+  };
+
+  stagedData.formalLaws.push(formalLaw);
+  renderStagedDocuments();
+
+  // Clear inputs
+  urlField.value = '';
+  titleField.value = '';
+  showMessage('Wet toegevoegd aan inzending.', 'success');
+}
+
+function extractTitleFromUrl(url) {
+  // Try to extract a readable title from the URL
+  const match = url.match(/BWBR\d+/);
+  return match ? match[0] : 'Formele wet';
 }
 
 function handleClassificationChange(e) {
-  const classification = e.detail?.value || e.target?.value;
+  const classification = e.detail?.value || '';
   const warning = document.getElementById('classification-warning');
-  const uploadBtn = document.getElementById('btn-upload-doc');
+  const addBtn = document.getElementById('btn-add-doc');
   const uploadArea = document.getElementById('upload-area');
 
   if (classification === 'restricted') {
     warning.style.display = 'block';
-    uploadBtn.setAttribute('disabled', '');
+    addBtn.setAttribute('disabled', '');
     uploadArea.style.opacity = '0.5';
   } else {
     warning.style.display = 'none';
     uploadArea.style.opacity = '1';
-    // Check if file is selected
-    const fileUpload = document.getElementById('doc_file');
-    if (fileUpload.files && fileUpload.files.length > 0 && classification) {
-      uploadBtn.removeAttribute('disabled');
-    }
+    updateAddDocumentButton();
   }
 }
 
 function handleFileChange(e) {
-  const files = e.detail?.files || [];
-  const classification = document.getElementById('doc_classification').value;
-  const uploadBtn = document.getElementById('btn-upload-doc');
+  updateAddDocumentButton();
+}
 
-  if (files.length > 0 && classification && classification !== 'restricted') {
-    uploadBtn.removeAttribute('disabled');
+function updateAddDocumentButton() {
+  const classification = document.getElementById('doc_classification')?.value;
+  const category = document.getElementById('doc_category')?.value;
+  const fileUpload = document.getElementById('doc_file');
+  const files = fileUpload?.files;
+  const addBtn = document.getElementById('btn-add-doc');
+
+  if (files && files.length > 0 && classification && classification !== 'restricted' && category) {
+    addBtn?.removeAttribute('disabled');
   } else {
-    uploadBtn.setAttribute('disabled', '');
+    addBtn?.setAttribute('disabled', '');
   }
 }
 
-async function handleUploadDocument() {
-  const category = document.getElementById('doc_category').value;
-  const classification = document.getElementById('doc_classification').value;
+function handleStageDocument() {
+  const categoryEl = document.getElementById('doc_category');
+  const classificationEl = document.getElementById('doc_classification');
   const fileUpload = document.getElementById('doc_file');
-  const files = fileUpload.files;
-  const uploadBtn = document.getElementById('btn-upload-doc');
+
+  const category = categoryEl?.value;
+  const classification = classificationEl?.value;
+  const files = fileUpload?.files;
 
   if (!category || !classification || !files || files.length === 0) {
     showMessage('Selecteer categorie, classificatie en bestand.', 'error');
@@ -192,149 +241,144 @@ async function handleUploadDocument() {
   }
 
   if (classification === 'restricted') {
-    showMessage('Beperkte documenten kunnen niet worden geupload.', 'error');
+    showMessage('Beperkte documenten kunnen niet worden ingediend.', 'error');
     return;
   }
 
-  const formData = new FormData();
-  formData.append('file', files[0]);
+  const file = files[0];
 
-  // Setup abort controller with 2 minute timeout for large files
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-  // Disable upload button during upload
-  uploadBtn.setAttribute('disabled', '');
-  uploadBtn.textContent = 'Bezig met uploaden...';
-
-  try {
-    const url = `/api/submissions/${submissionSlug}/documents?category=${category}&classification=${classification}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    // Handle specific HTTP status codes
-    if (response.status === 413) {
-      showMessage('Bestand is te groot. Maximum grootte is 50MB.', 'error');
-      return;
-    }
-
-    if (response.status === 429) {
-      showMessage('Te veel uploads. Probeer het later opnieuw.', 'error');
-      return;
-    }
-
-    if (response.status >= 500) {
-      showMessage('Server fout. Probeer het later opnieuw of neem contact op met support.', 'error');
-      return;
-    }
-
-    let result;
-    try {
-      result = await response.json();
-    } catch (parseError) {
-      showMessage('Onverwachte server response. Probeer het opnieuw.', 'error');
-      return;
-    }
-
-    if (result.success) {
-      documents.push(result.data);
-      renderDocumentList();
-      fileUpload.clearFiles();
-      document.getElementById('doc_category').value = '';
-      document.getElementById('doc_classification').value = '';
-      showMessage('Document geupload.', 'success');
-    } else {
-      showMessage(result.error || 'Kon document niet uploaden.', 'error');
-    }
-  } catch (e) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') {
-      showMessage('Upload timeout. Probeer het opnieuw met een kleiner bestand.', 'error');
-    } else if (e.message && e.message.includes('network')) {
-      showMessage('Netwerkfout tijdens upload. Controleer uw verbinding en probeer opnieuw.', 'error');
-    } else {
-      showMessage(`Upload mislukt: ${e.message || 'Onbekende fout'}`, 'error');
-    }
-  } finally {
-    // Reset upload button
-    uploadBtn.textContent = 'Document uploaden';
-    // Re-enable only if conditions are met
-    const currentClassification = document.getElementById('doc_classification').value;
-    const currentFiles = fileUpload.files;
-    if (currentFiles && currentFiles.length > 0 && currentClassification && currentClassification !== 'restricted') {
-      uploadBtn.removeAttribute('disabled');
-    }
+  // Validate file size (50MB max)
+  const maxSize = 50 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showMessage('Bestand is te groot. Maximum grootte is 50MB.', 'error');
+    return;
   }
+
+  // Stage the document (client-side only!)
+  const stagedDoc = {
+    id: `doc_${++stagedIdCounter}`,
+    file,
+    filename: file.name,
+    size: file.size,
+    category,
+    classification,
+    previewUrl: URL.createObjectURL(file) // For local preview only
+  };
+
+  stagedData.documents.push(stagedDoc);
+  renderStagedDocuments();
+
+  // Clear inputs
+  fileUpload.clearFiles?.();
+  categoryEl.value = '';
+  classificationEl.value = '';
+  document.getElementById('btn-add-doc')?.setAttribute('disabled', '');
+
+  showMessage('Document toegevoegd aan inzending.', 'success');
 }
 
-function renderDocumentList() {
+function renderStagedDocuments() {
   const container = document.getElementById('document-list');
+  if (!container) return;
 
-  if (documents.length === 0) {
-    container.innerHTML = `
-      <p style="color: var(--color-slate-500); text-align: center; padding: 20px;">
-        Nog geen documenten toegevoegd
-      </p>`;
+  const allDocs = [
+    ...stagedData.formalLaws.map(law => ({ ...law, type: 'law' })),
+    ...stagedData.documents.map(doc => ({ ...doc, type: 'document' }))
+  ];
+
+  if (allDocs.length === 0) {
+    container.innerHTML = '<p class="empty-state">Nog geen documenten toegevoegd</p>';
     return;
   }
 
   const categoryLabels = {
     formal_law: 'Wet',
     circular: 'Circulaire',
-    implementation_policy: 'Uitvoeringsbeleid',
-    work_instruction: 'Werkinstructie'
+    implementation_policy: 'Beleidsregel',
+    work_instruction: 'Instructie'
   };
 
-  const classificationBadges = {
-    public: 'badge-public',
-    claude_allowed: 'badge-claude',
-    restricted: 'badge-restricted'
+  const classificationLabels = {
+    public: 'Openbaar',
+    claude_allowed: 'AI-verwerking',
+    restricted: 'Beperkt'
   };
 
-  container.innerHTML = documents.map(doc => `
-    <div class="document-item">
-      <div class="document-info">
-        <div class="document-icon">${doc.category === 'formal_law' ? '🔗' : '📄'}</div>
-        <div>
-          <div class="document-name">${escapeHtml(doc.external_title || doc.filename || 'Document')}</div>
-          <div class="document-meta">
-            ${escapeHtml(categoryLabels[doc.category] || doc.category)}
-            <span class="badge ${classificationBadges[doc.classification] || ''}">${escapeHtml(doc.classification)}</span>
+  container.innerHTML = allDocs.map(doc => {
+    if (doc.type === 'law') {
+      return `
+        <div class="document-item">
+          <div class="document-info">
+            <div class="document-icon">🔗</div>
+            <div>
+              <div class="document-name">${escapeHtml(doc.title)}</div>
+              <div class="document-meta">Formele wet</div>
+            </div>
           </div>
+          <button type="button" class="delete-btn" onclick="confirmDeleteItem('${doc.id}', 'law', this)">
+            Verwijderen
+          </button>
         </div>
-      </div>
-      <button onclick="removeDocument('${escapeHtml(doc.id)}')" style="background: none; border: none; color: #dc2626; cursor: pointer;">
-        Verwijderen
-      </button>
-    </div>
-  `).join('');
+      `;
+    } else {
+      return `
+        <div class="document-item">
+          <div class="document-info">
+            <div class="document-icon">📄</div>
+            <div>
+              <div class="document-name">${escapeHtml(doc.filename)}</div>
+              <div class="document-meta">
+                ${categoryLabels[doc.category] || doc.category}
+                <span class="badge badge-${doc.classification}">${classificationLabels[doc.classification]}</span>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="delete-btn" onclick="confirmDeleteItem('${doc.id}', 'document', this)">
+            Verwijderen
+          </button>
+        </div>
+      `;
+    }
+  }).join('');
 }
 
-window.removeDocument = async function(docId) {
-  try {
-    const response = await fetch(`/api/submissions/${submissionSlug}/documents/${docId}`, {
-      method: 'DELETE'
-    });
+// Two-step delete: first click shows confirm, second click deletes
+window.confirmDeleteItem = function(id, type, button) {
+  // Show confirm state
+  button.textContent = 'Bevestig';
+  button.classList.add('confirm-delete');
+  button.onclick = () => removeStagedItem(id, type);
 
-    const result = await response.json();
-    if (result.success) {
-      documents = documents.filter(d => d.id !== docId);
-      renderDocumentList();
-    } else {
-      showMessage(result.error || 'Kon document niet verwijderen.', 'error');
+  // Reset after 3 seconds if not confirmed
+  setTimeout(() => {
+    if (button.classList.contains('confirm-delete')) {
+      button.textContent = 'Verwijderen';
+      button.classList.remove('confirm-delete');
+      button.onclick = () => confirmDeleteItem(id, type, button);
     }
-  } catch (e) {
-    showMessage('Kon geen verbinding maken met de server.', 'error');
-  }
+  }, 3000);
 };
+
+function removeStagedItem(id, type) {
+  if (type === 'law') {
+    stagedData.formalLaws = stagedData.formalLaws.filter(l => l.id !== id);
+  } else {
+    const doc = stagedData.documents.find(d => d.id === id);
+    if (doc?.previewUrl) {
+      URL.revokeObjectURL(doc.previewUrl);
+    }
+    stagedData.documents = stagedData.documents.filter(d => d.id !== id);
+  }
+  renderStagedDocuments();
+}
+
+// =============================================================================
+// STEP 3: PLANNING
+// =============================================================================
 
 async function loadAvailableSlots() {
   const container = document.getElementById('available-slots');
+  if (!container) return;
 
   try {
     const response = await fetch('/api/calendar/available');
@@ -342,86 +386,274 @@ async function loadAvailableSlots() {
 
     if (result.success && result.data.length > 0) {
       container.innerHTML = `
-        <p style="margin-bottom: 16px;">Selecteer een beschikbaar tijdslot:</p>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="slots-grid">
           ${result.data.map(slot => {
             const start = new Date(slot.slot_start);
             const end = new Date(slot.slot_end);
             const dateStr = start.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
             const timeStr = `${start.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`;
+            const isSelected = stagedData.selectedSlot?.id === slot.id;
+
             return `
-              <label style="display: flex; align-items: center; padding: 12px; border: 2px solid var(--color-slate-200); border-radius: 8px; cursor: pointer;"
-                     onclick="selectSlot('${slot.id}', this)">
-                <input type="radio" name="slot" value="${slot.id}" style="margin-right: 12px;">
-                <div>
-                  <div style="font-weight: 500;">${dateStr}</div>
-                  <div style="font-size: 0.875rem; color: var(--color-slate-600);">${timeStr}</div>
+              <div class="slot-option ${isSelected ? 'selected' : ''}" onclick="selectSlot('${slot.id}', '${slot.slot_start}', '${slot.slot_end}', this)">
+                <input type="radio" name="slot" value="${slot.id}" ${isSelected ? 'checked' : ''}>
+                <div class="slot-details">
+                  <div class="slot-date">${dateStr}</div>
+                  <div class="slot-time">${timeStr}</div>
                 </div>
-              </label>
+              </div>
             `;
           }).join('')}
         </div>
       `;
     } else {
       container.innerHTML = `
-        <rr-help-text variant="info">
-          Er zijn momenteel geen tijdsloten beschikbaar. U kunt uw inzending alsnog afronden en wij nemen contact met u op.
-        </rr-help-text>
+        <div class="info-box">
+          <p>Er zijn momenteel geen tijdsloten beschikbaar.</p>
+          <p>Wij nemen contact met u op om een afspraak in te plannen.</p>
+        </div>
       `;
     }
   } catch (e) {
     container.innerHTML = `
-      <rr-help-text variant="warning">
-        Kon beschikbare tijdsloten niet laden. U kunt uw inzending alsnog afronden.
-      </rr-help-text>
+      <div class="warning-box">
+        <p>Kon beschikbare tijdsloten niet laden.</p>
+        <p>U kunt uw inzending alsnog afronden zonder tijdslot.</p>
+      </div>
     `;
   }
 }
 
-window.selectSlot = function(slotId, element) {
-  selectedSlotId = slotId;
-  document.querySelectorAll('#available-slots label').forEach(el => {
-    el.style.borderColor = 'var(--color-slate-200)';
+window.selectSlot = function(slotId, slotStart, slotEnd, element) {
+  stagedData.selectedSlot = {
+    id: slotId,
+    start: new Date(slotStart),
+    end: new Date(slotEnd)
+  };
+
+  // Update visual selection
+  document.querySelectorAll('.slot-option').forEach(el => {
+    el.classList.remove('selected');
   });
-  element.style.borderColor = 'var(--color-primary)';
+  element.classList.add('selected');
+  element.querySelector('input[type="radio"]').checked = true;
 };
 
-async function handleSubmit() {
-  // Book slot if selected
-  if (selectedSlotId) {
-    try {
-      await fetch(`/api/submissions/${submissionSlug}/book-slot`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slot_id: selectedSlotId })
-      });
-    } catch (e) {
-      // Continue even if slot booking fails
+// =============================================================================
+// STEP 4: CONTACT INFORMATION
+// =============================================================================
+
+function handleStep4Next() {
+  const name = document.getElementById('submitter_name')?.value?.trim();
+  const email = document.getElementById('submitter_email')?.value?.trim();
+  const org = document.getElementById('organization')?.value?.trim();
+  const dept = document.getElementById('organization_department')?.value?.trim();
+
+  if (!name || !email || !org) {
+    showMessage('Vul alle verplichte velden in.', 'error');
+    return;
+  }
+
+  // Validate email format
+  if (!isValidEmail(email)) {
+    showMessage('Vul een geldig e-mailadres in.', 'error');
+    return;
+  }
+
+  // Store contact info (client-side only!)
+  stagedData.contact = { name, email, organization: org, department: dept || '' };
+
+  goToStep(5);
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// =============================================================================
+// STEP 5: SUMMARY & FINAL SUBMIT
+// =============================================================================
+
+function renderSummary() {
+  // Render documents summary
+  const docsContainer = document.getElementById('summary-documents');
+  if (docsContainer) {
+    const allDocs = [...stagedData.formalLaws, ...stagedData.documents];
+    if (allDocs.length === 0) {
+      docsContainer.innerHTML = '<p class="empty-state">Geen documenten toegevoegd</p>';
+    } else {
+      docsContainer.innerHTML = `
+        <ul class="summary-list">
+          ${stagedData.formalLaws.map(law => `
+            <li>🔗 ${escapeHtml(law.title)} <span class="meta">(Formele wet)</span></li>
+          `).join('')}
+          ${stagedData.documents.map(doc => `
+            <li>📄 ${escapeHtml(doc.filename)} <span class="meta">(${getCategoryLabel(doc.category)}, ${getClassificationLabel(doc.classification)})</span></li>
+          `).join('')}
+        </ul>
+      `;
     }
   }
 
-  // Submit the submission
+  // Render planning summary
+  const planningContainer = document.getElementById('summary-planning');
+  if (planningContainer) {
+    if (stagedData.selectedSlot) {
+      const slot = stagedData.selectedSlot;
+      const dateStr = slot.start.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = `${slot.start.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} - ${slot.end.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`;
+      planningContainer.innerHTML = `<p>${dateStr}<br>${timeStr}</p>`;
+    } else {
+      planningContainer.innerHTML = '<p class="empty-state">Geen tijdslot geselecteerd - wij nemen contact met u op</p>';
+    }
+  }
+
+  // Render contact summary
+  const contactContainer = document.getElementById('summary-contact');
+  if (contactContainer) {
+    const c = stagedData.contact;
+    if (c.name) {
+      contactContainer.innerHTML = `
+        <p><strong>${escapeHtml(c.name)}</strong></p>
+        <p>${escapeHtml(c.email)}</p>
+        <p>${escapeHtml(c.organization)}${c.department ? `, ${escapeHtml(c.department)}` : ''}</p>
+      `;
+    } else {
+      contactContainer.innerHTML = '<p class="empty-state">Geen gegevens ingevuld</p>';
+    }
+  }
+}
+
+function getCategoryLabel(category) {
+  const labels = {
+    circular: 'Circulaire',
+    implementation_policy: 'Beleidsregel',
+    work_instruction: 'Instructie'
+  };
+  return labels[category] || category;
+}
+
+function getClassificationLabel(classification) {
+  const labels = {
+    public: 'Openbaar',
+    claude_allowed: 'AI-verwerking',
+    restricted: 'Beperkt'
+  };
+  return labels[classification] || classification;
+}
+
+async function handleFinalSubmit() {
+  const submitBtn = document.getElementById('btn-submit');
+
+  // Validate we have minimum required data
+  if (!stagedData.consentPrivacy || !stagedData.consentDocuments) {
+    showMessage('Privacy toestemming is vereist.', 'error');
+    return;
+  }
+
+  if (!stagedData.contact.name || !stagedData.contact.email || !stagedData.contact.organization) {
+    showMessage('Contactgegevens zijn niet volledig.', 'error');
+    return;
+  }
+
+  // Disable submit button
+  if (submitBtn) {
+    submitBtn.setAttribute('loading', '');
+    submitBtn.setAttribute('disabled', '');
+  }
+
   try {
-    const response = await fetch(`/api/submissions/${submissionSlug}/submit`, {
+    // STEP 1: Create submission with contact info
+    const submissionResponse = await fetch('/api/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submitter_name: stagedData.contact.name,
+        submitter_email: stagedData.contact.email,
+        organization: stagedData.contact.organization,
+        organization_department: stagedData.contact.department || null
+      })
+    });
+
+    const submissionResult = await submissionResponse.json();
+    if (!submissionResult.success) {
+      throw new Error(submissionResult.error || 'Kon inzending niet aanmaken.');
+    }
+
+    const slug = submissionResult.data.slug;
+
+    // STEP 2: Upload all staged formal laws
+    for (const law of stagedData.formalLaws) {
+      await fetch(`/api/submissions/${slug}/formal-law`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          external_url: law.url,
+          external_title: law.title || null
+        })
+      });
+    }
+
+    // STEP 3: Upload all staged documents
+    for (const doc of stagedData.documents) {
+      const formData = new FormData();
+      formData.append('file', doc.file);
+
+      const url = `/api/submissions/${slug}/documents?category=${doc.category}&classification=${doc.classification}`;
+      await fetch(url, {
+        method: 'POST',
+        body: formData
+      });
+    }
+
+    // STEP 4: Book slot if selected
+    if (stagedData.selectedSlot) {
+      await fetch(`/api/submissions/${slug}/book-slot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot_id: stagedData.selectedSlot.id })
+      });
+    }
+
+    // STEP 5: Submit the submission
+    const finalResponse = await fetch(`/api/submissions/${slug}/submit`, {
       method: 'POST'
     });
 
-    const result = await response.json();
-    if (result.success) {
-      document.getElementById('submission-slug').textContent = submissionSlug;
-      // Update status link with the slug
-      const statusLink = document.getElementById('link-status');
-      if (statusLink) {
-        statusLink.href = `/status.html?slug=${encodeURIComponent(submissionSlug)}`;
-      }
-      goToStep('success');
-    } else {
-      showMessage(result.error || 'Kon inzending niet afronden.', 'error');
+    const finalResult = await finalResponse.json();
+    if (!finalResult.success) {
+      throw new Error(finalResult.error || 'Kon inzending niet afronden.');
     }
+
+    // Success!
+    document.getElementById('submission-slug').textContent = slug;
+
+    // Update status link with the slug
+    const statusLink = document.getElementById('link-status');
+    if (statusLink) {
+      statusLink.href = `/status.html?slug=${encodeURIComponent(slug)}`;
+    }
+
+    // Clean up preview URLs
+    stagedData.documents.forEach(doc => {
+      if (doc.previewUrl) URL.revokeObjectURL(doc.previewUrl);
+    });
+
+    goToStep('success');
+
   } catch (e) {
-    showMessage('Kon geen verbinding maken met de server.', 'error');
+    showMessage(e.message || 'Er ging iets mis bij het indienen.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.removeAttribute('loading');
+      submitBtn.removeAttribute('disabled');
+    }
   }
 }
+
+// =============================================================================
+// UTILITIES
+// =============================================================================
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -432,8 +664,14 @@ function escapeHtml(str) {
 
 function showMessage(text, type) {
   const el = document.getElementById('status-message');
+  if (!el) return;
+
   el.textContent = text;
   el.className = `status-message ${type}`;
   el.style.display = 'block';
+
+  // Scroll to message
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }

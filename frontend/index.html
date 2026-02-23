@@ -14,68 +14,82 @@
         <span class="logo-text">RegelRecht</span>
         <span class="logo-subtitle">Upload Portal</span>
       </a>
-      <nav class="nav-links">
-        <a href="/submit.html">Nieuwe inzending</a>
-        <a href="/status.html">Status opvragen</a>
-        <a href="/faq.html">FAQ</a>
-        <a href="/privacy.html">Privacy</a>
-      </nav>
     </div>
   </header>
 
   <main class="main">
-    <h1 class="page-title">Welkom bij de RegelRecht Upload Portal</h1>
-    <p class="page-subtitle">Deel uw beleidsdocumenten voor het RegelRecht Proof of Concept</p>
+    <h1 class="page-title">Deel uw beleidsdocumenten</h1>
+    <p class="page-subtitle">Draag bij aan het RegelRecht onderzoeksproject door uw interne regelsets te delen</p>
 
+    <!-- Progress Bar Preview -->
     <div class="card">
-      <h2 class="card-title">Wat is RegelRecht?</h2>
-      <p>RegelRecht is een onderzoeksproject naar het vertalen van beleid en regelgeving naar machine-leesbare regels. Door interne werkprocessen te structureren, kunnen we samen onderzoeken hoe technologie kan helpen bij het consistent en transparant toepassen van regels.</p>
+      <h2 class="card-title">Het indieningsproces</h2>
+      <p style="margin-bottom: var(--spacing-6);">U doorloopt de volgende stappen om uw documenten in te dienen:</p>
+      <rr-progress-bar current="0"></rr-progress-bar>
     </div>
 
+    <!-- Document Types Info -->
     <div class="card">
-      <h2 class="card-title">Hoe werkt het?</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <div class="step-title">Upload documenten</div>
+      <h2 class="card-title">Welke documenten kunt u indienen?</h2>
+      <div class="doc-types-grid">
+        <div class="doc-type">
+          <div class="doc-type-icon">🔗</div>
+          <div>
+            <strong>Formele wetten</strong>
+            <p>Links naar wetten.overheid.nl</p>
+          </div>
         </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <div class="step-title">Classificeer inhoud</div>
+        <div class="doc-type">
+          <div class="doc-type-icon">📋</div>
+          <div>
+            <strong>Circulaires</strong>
+            <p>Interne circulaires en mededelingen</p>
+          </div>
         </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <div class="step-title">Plan een gesprek</div>
+        <div class="doc-type">
+          <div class="doc-type-icon">📜</div>
+          <div>
+            <strong>Beleidsregels</strong>
+            <p>Uitvoeringsbeleid en -documenten</p>
+          </div>
         </div>
-        <div class="step">
-          <div class="step-number">4</div>
-          <div class="step-title">Ontvang resultaten</div>
+        <div class="doc-type">
+          <div class="doc-type-icon">📝</div>
+          <div>
+            <strong>Werkinstructies</strong>
+            <p>Instructies voor medewerkers</p>
+          </div>
         </div>
       </div>
-      <p>Na het uploaden van uw documenten maken wij een eerste aanzet van machine-leesbare regels. Vervolgens plannen we een meeting met uw experts om de resultaten te bespreken.</p>
     </div>
 
+    <!-- About RegelRecht -->
     <div class="card">
-      <h2 class="card-title">Welke documenten kunnen worden ingediend?</h2>
-      <ul style="margin-left: 20px; margin-top: 12px;">
-        <li><strong>Formele wetten</strong> - Links naar wetten.overheid.nl</li>
-        <li><strong>Circulaires</strong> - Interne circulaires en mededelingen</li>
-        <li><strong>Uitvoeringsbeleid</strong> - Beleidsregels en -documenten</li>
-        <li><strong>Werkinstructies</strong> - Instructies voor medewerkers</li>
-      </ul>
+      <h2 class="card-title">Over RegelRecht</h2>
+      <p>RegelRecht is een onderzoeksproject naar het vertalen van beleid en regelgeving naar machine-leesbare regels. Door interne werkprocessen te structureren, onderzoeken we hoe technologie kan helpen bij het consistent en transparant toepassen van regels.</p>
+      <p style="margin-top: var(--spacing-4);">Na het uploaden van uw documenten maken wij een eerste aanzet van machine-leesbare regels. Vervolgens plannen we een gesprek met uw experts om de resultaten te bespreken.</p>
     </div>
 
-    <div class="button-group" style="justify-content: center;">
-      <a href="/submit.html">
-        <rr-button variant="primary">Start nieuwe inzending</rr-button>
+    <!-- Dual CTA Buttons -->
+    <div class="cta-section">
+      <a href="/submit.html" class="cta-button cta-primary">
+        <span class="cta-icon">📤</span>
+        <span class="cta-text">
+          <strong>Nieuwe inzending</strong>
+          <span>Start met het indienen van documenten</span>
+        </span>
       </a>
-      <a href="/faq.html">
-        <rr-button variant="secondary">Lees de FAQ</rr-button>
+      <a href="/status.html" class="cta-button cta-secondary">
+        <span class="cta-icon">🔍</span>
+        <span class="cta-text">
+          <strong>Status opvragen</strong>
+          <span>Bekijk een bestaande inzending</span>
+        </span>
       </a>
     </div>
   </main>
 
-  <footer class="footer">
+  <footer class="footer footer-legal">
     <div class="footer-content">
       <span>&copy; 2026 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties</span>
       <nav class="footer-links">
