@@ -42,12 +42,12 @@ export class RRButton extends RRLocalBase {
         border-color: var(--color-primary-hover, #1a5490);
       }
       .btn.secondary {
-        background: #fff;
-        color: var(--color-primary, #154273);
-        border-color: var(--color-primary, #154273);
+        background: var(--color-slate-100, #f1f5f9);
+        color: var(--color-slate-700, #334155);
+        border-color: transparent;
       }
       .btn.secondary:hover:not(:disabled) {
-        background: #eff6ff;
+        background: var(--color-slate-200, #e2e8f0);
       }
       .btn.danger {
         background: #dc2626;

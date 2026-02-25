@@ -208,7 +208,6 @@ function renderSubmissionDetail(sub) {
       ${sub.documents?.length ? sub.documents.map(doc => `
         <div class="document-item" style="margin-bottom: 8px;">
           <div class="document-info">
-            <div class="document-icon">${doc.category === 'formal_law' ? '🔗' : '📄'}</div>
             <div>
               <div class="document-name">
                 ${doc.external_url

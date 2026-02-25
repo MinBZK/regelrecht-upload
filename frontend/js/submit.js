@@ -68,19 +68,20 @@ function setupEventListeners() {
   // Step 2: Documents
   document.getElementById('btn-back-2')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(1); });
   document.getElementById('btn-next-2')?.addEventListener('click', () => goToStep(3));
-  document.getElementById('btn-add-law')?.addEventListener('click', handleAddFormalLaw);
-  document.getElementById('btn-add-doc')?.addEventListener('click', handleStageDocument);
+  document.getElementById('btn-add-link')?.addEventListener('click', handleAddLink);
+  // Upload mode toggle (link vs document)
+  document.getElementById('upload_mode')?.addEventListener('change', handleUploadModeChange);
 
-  // Category and Classification toggle change
-  document.getElementById('doc_category')?.addEventListener('change', handleFileChange);
+  // Classification toggle change
   document.getElementById('doc_classification')?.addEventListener('change', handleClassificationChange);
 
-  // File selection
-  document.getElementById('doc_file')?.addEventListener('change', handleFileChange);
+  // File selection - auto-stage when files are picked
+  document.getElementById('doc_file')?.addEventListener('change', handleAutoStage);
 
   // Step 3: Planning
   document.getElementById('btn-back-3')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(2); });
   document.getElementById('btn-next-3')?.addEventListener('click', () => goToStep(4));
+  document.getElementById('planning_choice')?.addEventListener('change', handlePlanningChoiceChange);
 
   // Step 4: Contact
   document.getElementById('btn-back-4')?.addEventListener('click', (e) => { e.preventDefault(); goToStep(3); });
@@ -119,7 +120,8 @@ function goToStep(step) {
 
   // Step-specific actions
   if (step === 3) {
-    loadAvailableSlots();
+    const planningChoice = document.getElementById('planning_choice')?.value;
+    if (planningChoice === 'pick_slot') loadAvailableSlots();
   } else if (step === 5) {
     renderSummary();
   }
@@ -152,9 +154,15 @@ function handleStep1Next() {
 // STEP 2: DOCUMENTS (CLIENT-SIDE STAGING ONLY)
 // =============================================================================
 
-function handleAddFormalLaw() {
-  const urlField = document.getElementById('formal_law_url');
-  const titleField = document.getElementById('formal_law_title');
+function handleUploadModeChange(e) {
+  const mode = e.detail?.value || 'link';
+  document.getElementById('mode-link').style.display = mode === 'link' ? 'block' : 'none';
+  document.getElementById('mode-document').style.display = mode === 'document' ? 'block' : 'none';
+}
+
+function handleAddLink() {
+  const urlField = document.getElementById('link_url');
+  const titleField = document.getElementById('link_title');
   const url = urlField.value.trim();
   const title = titleField.value.trim();
 
@@ -163,118 +171,114 @@ function handleAddFormalLaw() {
     return;
   }
 
-  // Validate URL format
-  if (!url.startsWith('https://wetten.overheid.nl/')) {
-    showMessage('Gebruik een URL van wetten.overheid.nl', 'error');
+  if (!url.startsWith('https://')) {
+    showMessage('Vul een geldige URL in (beginnend met https://).', 'error');
     return;
   }
 
-  // Stage the formal law (client-side only!)
-  const formalLaw = {
+  const isKnownSource = url.startsWith('https://wetten.overheid.nl/') ||
+                         url.startsWith('https://lokaleregelgeving.overheid.nl/');
+
+  // Auto-detect type based on URL
+  const isFormal = url.startsWith('https://wetten.overheid.nl/');
+  const source = isFormal ? 'formal' : 'other';
+
+  const link = {
     id: `law_${++stagedIdCounter}`,
     url,
-    title: title || extractTitleFromUrl(url)
+    title: title || extractTitleFromUrl(url),
+    source
   };
 
-  stagedData.formalLaws.push(formalLaw);
+  stagedData.formalLaws.push(link);
   renderStagedDocuments();
 
-  // Clear inputs
-  urlField.value = '';
+  urlField.value = 'https://';
   titleField.value = '';
-  showMessage('Wet toegevoegd aan inzending.', 'success');
+
+  if (isKnownSource) {
+    const label = isFormal ? 'Wet' : 'Regelgeving';
+    showMessage(`${label} toegevoegd aan inzending.`, 'success');
+  } else {
+    showMessage('Link toegevoegd. Let op: dit is geen bekende overheidsbron.', 'warning');
+  }
 }
 
 function extractTitleFromUrl(url) {
   // Try to extract a readable title from the URL
-  const match = url.match(/BWBR\d+/);
-  return match ? match[0] : 'Formele wet';
+  const bwbr = url.match(/BWBR\d+/);
+  if (bwbr) return bwbr[0];
+
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return 'Link';
+  }
 }
+
+let classificationChosen = false;
 
 function handleClassificationChange(e) {
   const classification = e.detail?.value || '';
   const warning = document.getElementById('classification-warning');
-  const addBtn = document.getElementById('btn-add-doc');
   const uploadArea = document.getElementById('upload-area');
+
+  classificationChosen = !!classification;
 
   if (classification === 'restricted') {
     warning.style.display = 'block';
-    addBtn.setAttribute('disabled', '');
     uploadArea.style.opacity = '0.5';
   } else {
     warning.style.display = 'none';
     uploadArea.style.opacity = '1';
-    updateAddDocumentButton();
+    tryAutoStage();
   }
 }
 
-function handleFileChange(e) {
-  updateAddDocumentButton();
+function handleAutoStage() {
+  tryAutoStage();
 }
 
-function updateAddDocumentButton() {
-  const classification = document.getElementById('doc_classification')?.value;
-  const category = document.getElementById('doc_category')?.value;
-  const fileUpload = document.getElementById('doc_file');
-  const files = fileUpload?.files;
-  const addBtn = document.getElementById('btn-add-doc');
-
-  if (files && files.length > 0 && classification && classification !== 'restricted' && category) {
-    addBtn?.removeAttribute('disabled');
-  } else {
-    addBtn?.setAttribute('disabled', '');
-  }
-}
-
-function handleStageDocument() {
-  const categoryEl = document.getElementById('doc_category');
+function tryAutoStage() {
   const classificationEl = document.getElementById('doc_classification');
   const fileUpload = document.getElementById('doc_file');
 
-  const category = categoryEl?.value;
   const classification = classificationEl?.value;
   const files = fileUpload?.files;
 
-  if (!category || !classification || !files || files.length === 0) {
-    showMessage('Selecteer categorie, classificatie en bestand.', 'error');
-    return;
-  }
+  if (!classificationChosen || !classification || classification === 'restricted' || !files || files.length === 0) return;
 
-  if (classification === 'restricted') {
-    showMessage('Beperkte documenten kunnen niet worden ingediend.', 'error');
-    return;
-  }
-
-  const file = files[0];
-
-  // Validate file size (50MB max)
   const maxSize = 50 * 1024 * 1024;
-  if (file.size > maxSize) {
-    showMessage('Bestand is te groot. Maximum grootte is 50MB.', 'error');
-    return;
+  let added = 0;
+
+  for (const file of files) {
+    if (file.size > maxSize) {
+      showMessage(`${file.name} is te groot (max 50MB) en wordt overgeslagen.`, 'warning');
+      continue;
+    }
+
+    stagedData.documents.push({
+      id: `doc_${++stagedIdCounter}`,
+      file,
+      filename: file.name,
+      size: file.size,
+      classification,
+      previewUrl: URL.createObjectURL(file)
+    });
+    added++;
   }
 
-  // Stage the document (client-side only!)
-  const stagedDoc = {
-    id: `doc_${++stagedIdCounter}`,
-    file,
-    filename: file.name,
-    size: file.size,
-    category,
-    classification,
-    previewUrl: URL.createObjectURL(file) // For local preview only
-  };
-
-  stagedData.documents.push(stagedDoc);
   renderStagedDocuments();
 
-  // Clear inputs
+  // Clear inputs for next batch
   fileUpload.clearFiles?.();
-  categoryEl.value = '';
   classificationEl.value = '';
-  document.getElementById('btn-add-doc')?.setAttribute('disabled', '');
+  classificationChosen = false;
 
-  showMessage('Document toegevoegd aan inzending.', 'success');
+  if (added > 0) {
+    const label = added === 1 ? 'Document' : `${added} documenten`;
+    showMessage(`${label} toegevoegd aan inzending.`, 'success');
+  }
 }
 
 function renderStagedDocuments() {
@@ -309,10 +313,9 @@ function renderStagedDocuments() {
       return `
         <div class="document-item">
           <div class="document-info">
-            <div class="document-icon">🔗</div>
             <div>
               <div class="document-name">${escapeHtml(doc.title)}</div>
-              <div class="document-meta">Formele wet</div>
+              <div class="document-meta">Link: ${escapeHtml(doc.url)}</div>
             </div>
           </div>
           <button type="button" class="delete-btn" onclick="confirmDeleteItem('${doc.id}', 'law', this)">
@@ -324,11 +327,9 @@ function renderStagedDocuments() {
       return `
         <div class="document-item">
           <div class="document-info">
-            <div class="document-icon">📄</div>
             <div>
               <div class="document-name">${escapeHtml(doc.filename)}</div>
               <div class="document-meta">
-                ${categoryLabels[doc.category] || doc.category}
                 <span class="badge badge-${doc.classification}">${classificationLabels[doc.classification]}</span>
               </div>
             </div>
@@ -375,6 +376,22 @@ function removeStagedItem(id, type) {
 // =============================================================================
 // STEP 3: PLANNING
 // =============================================================================
+
+function handlePlanningChoiceChange(e) {
+  const choice = e.detail?.value || 'no_appointment';
+  const slotsContainer = document.getElementById('available-slots');
+  const noAppointmentInfo = document.getElementById('no-appointment-info');
+
+  if (choice === 'pick_slot') {
+    slotsContainer.style.display = 'block';
+    noAppointmentInfo.style.display = 'none';
+    loadAvailableSlots();
+  } else {
+    slotsContainer.style.display = 'none';
+    noAppointmentInfo.style.display = 'block';
+    stagedData.selectedSlot = null;
+  }
+}
 
 async function loadAvailableSlots() {
   const container = document.getElementById('available-slots');
@@ -485,10 +502,10 @@ function renderSummary() {
       docsContainer.innerHTML = `
         <ul class="summary-list">
           ${stagedData.formalLaws.map(law => `
-            <li>🔗 ${escapeHtml(law.title)} <span class="meta">(Formele wet)</span></li>
+            <li>${escapeHtml(law.title)} <span class="meta">(${escapeHtml(law.url)})</span></li>
           `).join('')}
           ${stagedData.documents.map(doc => `
-            <li>📄 ${escapeHtml(doc.filename)} <span class="meta">(${getCategoryLabel(doc.category)}, ${getClassificationLabel(doc.classification)})</span></li>
+            <li>${escapeHtml(doc.filename)} <span class="meta">(${getClassificationLabel(doc.classification)})</span></li>
           `).join('')}
         </ul>
       `;
@@ -599,7 +616,7 @@ async function handleFinalSubmit() {
       const formData = new FormData();
       formData.append('file', doc.file);
 
-      const url = `/api/submissions/${slug}/documents?category=${doc.category}&classification=${doc.classification}`;
+      const url = `/api/submissions/${slug}/documents?classification=${doc.classification}`;
       await fetch(url, {
         method: 'POST',
         body: formData

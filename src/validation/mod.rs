@@ -157,9 +157,15 @@ pub fn validate_file_upload(
         "application/pdf",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "application/vnd.oasis.opendocument.text",
+        "application/rtf",
         "text/plain",
         "text/markdown",
+        "text/csv",
     ];
 
     if !allowed_types.contains(&mime_type) {

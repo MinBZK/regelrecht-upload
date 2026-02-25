@@ -330,9 +330,14 @@ pub async fn submit_submission(
 
 #[derive(Debug, Deserialize)]
 pub struct UploadDocumentQuery {
+    #[serde(default = "default_document_category")]
     pub category: DocumentCategory,
     pub classification: DocumentClassification,
     pub description: Option<String>,
+}
+
+fn default_document_category() -> DocumentCategory {
+    DocumentCategory::WorkInstruction
 }
 
 /// Upload a document

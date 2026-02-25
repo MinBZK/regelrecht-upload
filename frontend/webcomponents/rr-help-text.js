@@ -49,10 +49,8 @@ export class RRHelpText extends RRLocalBase {
   }
 
   render() {
-    const icons = { info: 'ℹ️', warning: '⚠️', error: '❌', success: '✓' };
     this.shadowRoot.innerHTML = `
       <div class="help-text ${this.variant}">
-        <span class="icon">${icons[this.variant] || icons.info}</span>
         <div><slot></slot></div>
       </div>
     `;

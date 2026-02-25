@@ -18,9 +18,6 @@
   </header>
 
   <main class="main">
-    <h1 class="page-title">Deel uw beleidsdocumenten</h1>
-    <p class="page-subtitle">Volg de stappen om uw documenten in te dienen voor het RegelRecht onderzoeksproject</p>
-
     <div id="status-message" class="status-message" style="display: none;"></div>
 
     <!-- Progress Bar -->
@@ -63,7 +60,7 @@
         </div>
       </div>
 
-      <div class="button-group button-group-end">
+      <div class="button-group">
         <rr-button variant="primary" id="btn-next-1">Verder naar documenten</rr-button>
       </div>
     </div>
@@ -75,74 +72,65 @@
       <h2 class="card-title">Documenten toevoegen</h2>
       <p class="step-intro">Voeg de documenten toe die u wilt indienen. De bestanden worden pas geüpload bij de definitieve inzending.</p>
 
-      <!-- Add formal law link -->
-      <div class="inner-card">
-        <h3 class="inner-card-title">Titel van de wet</h3>
-        <p class="field-hint">Verwijs naar de formele wet op wetten.overheid.nl</p>
-
-        <div class="form-row">
-          <div class="form-group form-group-grow">
-            <label class="form-label" for="formal_law_url">Link naar wetten.overheid.nl</label>
-            <rr-text-field id="formal_law_url" name="formal_law_url"></rr-text-field>
-          </div>
-          <div class="form-group" style="flex-shrink: 0;">
-            <label class="form-label">&nbsp;</label>
-            <rr-button variant="secondary" id="btn-add-law">Voeg link toe</rr-button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="formal_law_title">Titel (optioneel)</label>
-          <rr-text-field id="formal_law_title" name="formal_law_title"></rr-text-field>
-        </div>
-      </div>
-
-      <!-- Upload other documents -->
-      <div class="inner-card">
-        <h3 class="inner-card-title">Upload document</h3>
-        <p class="field-hint">Accepteert PDF, Word, en tekstbestanden (max. 50MB)</p>
-
-        <div class="form-group">
-          <label class="form-label">Type document</label>
-          <rr-toggle-group
-            id="doc_category"
-            name="category"
-            options='[{"value": "circular", "label": "Circulaire"}, {"value": "implementation_policy", "label": "Beleidsregel"}, {"value": "work_instruction", "label": "Instructie"}]'
-            required
-          ></rr-toggle-group>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Classificatie</label>
-          <rr-toggle-group
-            id="doc_classification"
-            name="classification"
-            options='[{"value": "public", "label": "Openbaar"}, {"value": "claude_allowed", "label": "AI-verwerking toegestaan"}, {"value": "restricted", "label": "Beperkt", "variant": "danger"}]'
-            required
-          ></rr-toggle-group>
-        </div>
-
-        <div id="classification-warning" class="warning-box" style="display: none;">
-          <strong>Let op:</strong> Documenten met classificatie "Beperkt" kunnen niet worden geüpload naar dit portaal.
-          Deze documenten mogen niet worden gebruikt met AI-tools.
-        </div>
-
-        <div id="upload-area" class="form-group">
-          <label class="form-label">Bestand selecteren</label>
-          <rr-file-upload id="doc_file"></rr-file-upload>
-        </div>
-
-        <rr-button variant="secondary" id="btn-add-doc" disabled>Voeg document toe</rr-button>
-      </div>
-
-      <!-- Staged documents list -->
-      <h3 class="section-title">Geselecteerde documenten</h3>
-      <p class="field-hint">Deze documenten worden lokaal bewaard tot de definitieve inzending</p>
+      <!-- Staged documents list (altijd zichtbaar) -->
       <div id="document-list" class="document-list">
         <p class="empty-state">Nog geen documenten toegevoegd</p>
       </div>
 
-      <div class="button-group button-group-end">
+      <div class="inner-card">
+        <!-- Toggle: Link of Document -->
+        <rr-toggle-group
+          id="upload_mode"
+          name="upload_mode"
+          value="document"
+          options='[{"value": "document", "label": "Document uploaden"}, {"value": "link", "label": "Link toevoegen"}]'
+        ></rr-toggle-group>
+
+        <!-- Link toevoegen -->
+        <div id="mode-link" style="display: none; margin-top: var(--spacing-4);">
+          <p class="field-hint">Verwijs naar wetgeving of regelgeving, bijv. via <a href="https://wetten.overheid.nl" target="_blank">wetten.overheid.nl</a> of <a href="https://lokaleregelgeving.overheid.nl/zoeken" target="_blank">lokaleregelgeving.overheid.nl</a></p>
+
+          <div class="form-group">
+            <label class="form-label" for="link_url">Link naar wet of regelgeving</label>
+            <rr-text-field id="link_url" name="link_url" value="https://"></rr-text-field>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="link_title">Titel (optioneel)</label>
+            <rr-text-field id="link_title" name="link_title"></rr-text-field>
+          </div>
+
+          <rr-button variant="secondary" id="btn-add-link">Voeg link toe</rr-button>
+        </div>
+
+        <!-- Document uploaden -->
+        <div id="mode-document" style="margin-top: var(--spacing-4);">
+          <p class="field-hint">Accepteert PDF, Word, Excel, PowerPoint, en tekstbestanden (max. 50MB)</p>
+
+          <div class="form-group">
+            <label class="form-label">Classificatie</label>
+            <rr-toggle-group
+              id="doc_classification"
+              name="classification"
+              options='[{"value": "public", "label": "Openbaar"}, {"value": "claude_allowed", "label": "AI-verwerking toegestaan"}, {"value": "restricted", "label": "Beperkt", "variant": "danger"}]'
+              required
+            ></rr-toggle-group>
+          </div>
+
+          <div id="classification-warning" class="warning-box" style="display: none;">
+            <strong>Let op:</strong> Documenten met classificatie "Beperkt" kunnen niet worden geüpload naar dit portaal.
+            Deze documenten mogen niet worden gebruikt met AI-tools.
+          </div>
+
+          <div id="upload-area" class="form-group">
+            <label class="form-label">Bestand selecteren</label>
+            <rr-file-upload id="doc_file" multiple></rr-file-upload>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="button-group">
         <rr-button variant="primary" id="btn-next-2">Verder naar planning</rr-button>
       </div>
     </div>
@@ -152,13 +140,24 @@
       <a href="#" class="back-link" id="btn-back-3">← Terug naar documenten</a>
 
       <h2 class="card-title">Gesprek inplannen</h2>
-      <p class="step-intro">Selecteer een tijdslot voor een gesprek om de resultaten van de verkenning te bespreken. Het is nuttig als inhoudelijk juridische experts aanschuiven.</p>
+      <p class="step-intro">Plan optioneel een gesprek in om de resultaten van de verkenning te bespreken. Het is nuttig als inhoudelijk juridische experts aanschuiven.</p>
 
-      <div id="available-slots" class="slots-container">
+      <rr-toggle-group
+        id="planning_choice"
+        name="planning_choice"
+        value="no_appointment"
+        options='[{"value": "no_appointment", "label": "Geen afspraak"}, {"value": "pick_slot", "label": "Tijdslot kiezen"}]'
+      ></rr-toggle-group>
+
+      <div id="no-appointment-info" class="info-box" style="margin-top: var(--spacing-4);">
+        Geen probleem. Ons team neemt na de verkenning contact met u op om een afspraak in te plannen.
+      </div>
+
+      <div id="available-slots" class="slots-container" style="display: none; margin-top: var(--spacing-4);">
         <p class="loading-state">Beschikbare tijdsloten worden geladen...</p>
       </div>
 
-      <div class="button-group button-group-end">
+      <div class="button-group">
         <rr-button variant="primary" id="btn-next-3">Verder naar gegevens</rr-button>
       </div>
     </div>
@@ -192,7 +191,7 @@
         </div>
       </div>
 
-      <div class="button-group button-group-end">
+      <div class="button-group">
         <rr-button variant="primary" id="btn-next-4">Verder naar bevestiging</rr-button>
       </div>
     </div>
@@ -244,7 +243,7 @@
 
     <!-- Success message -->
     <div id="step-success" class="card step-panel" style="display: none; text-align: center;">
-      <div class="success-icon">✓</div>
+      <div class="success-icon">&#10003;</div>
       <h2 class="card-title">Inzending succesvol!</h2>
       <p>Uw inzending is ontvangen. U kunt de status volgen met onderstaande referentie:</p>
       <div class="reference-code" id="submission-slug"></div>
@@ -261,7 +260,7 @@
       <span>&copy; 2026 Ministerie van Binnenlandse Zaken en Koninkrijksrelaties</span>
       <nav class="footer-links">
         <a href="/privacy.html">Privacyverklaring</a>
-        <a href="/faq.html">FAQ</a>
+        <a href="/faq.html">Help</a>
       </nav>
     </div>
   </footer>

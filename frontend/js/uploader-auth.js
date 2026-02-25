@@ -117,7 +117,6 @@ function renderDocumentList() {
   container.innerHTML = documents.map(doc => `
     <div class="document-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--color-slate-200); border-radius: 8px; margin-bottom: 8px;">
       <div class="document-info" style="display: flex; align-items: center; gap: 12px;">
-        <div class="document-icon" style="font-size: 1.5rem;">${doc.category === 'formal_law' ? '🔗' : '📄'}</div>
         <div>
           <div class="document-name" style="font-weight: 500;">
             ${doc.external_url

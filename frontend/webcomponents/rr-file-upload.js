@@ -16,7 +16,7 @@ export class RRFileUpload extends RRLocalBase {
   }
 
   get files() { return this._files; }
-  get accept() { return this.getAttribute('accept') || '.pdf,.doc,.docx,.odt,.txt,.md'; }
+  get accept() { return this.getAttribute('accept') || '.pdf,.doc,.docx,.odt,.txt,.md,.markdown,.xls,.xlsx,.ppt,.pptx,.csv,.rtf'; }
   get disabled() { return this.getBooleanAttribute('disabled'); }
   get multiple() { return this.getBooleanAttribute('multiple'); }
 
@@ -71,7 +71,7 @@ export class RRFileUpload extends RRLocalBase {
       <div class="dropzone ${this.disabled ? 'disabled' : ''}">
         <div class="icon">📄</div>
         <div class="title">Sleep bestanden hierheen of klik om te uploaden</div>
-        <div class="subtitle">PDF, Word, of tekstbestanden (max 50MB)</div>
+        <div class="subtitle">PDF, Word, Excel, PowerPoint, of tekstbestanden (max 50MB)</div>
         <input type="file" class="file-input" accept="${this.accept}" ${this.multiple ? 'multiple' : ''} ${this.disabled ? 'disabled' : ''}>
       </div>
       <div class="file-list"></div>
