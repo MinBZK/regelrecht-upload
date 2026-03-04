@@ -25,11 +25,7 @@ use axum::{
 use handlers::AppState;
 use std::path::PathBuf;
 use tokio::fs;
-use tower_http::{
-    cors::CorsLayer,
-    services::ServeDir,
-    trace::TraceLayer,
-};
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -112,11 +108,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Method::DELETE,
                 Method::OPTIONS,
             ])
-            .allow_headers([
-                header::CONTENT_TYPE,
-                header::COOKIE,
-                header::ACCEPT,
-            ])
+            .allow_headers([header::CONTENT_TYPE, header::COOKIE, header::ACCEPT])
             .allow_credentials(true)
     } else {
         CorsLayer::permissive()
