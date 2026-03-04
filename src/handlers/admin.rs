@@ -317,6 +317,16 @@ pub async fn forward_submission(
     Path(id): Path<Uuid>,
     Json(input): Json<ForwardSubmissionRequest>,
 ) -> impl IntoResponse {
+    // Validate forward_to length
+    if input.forward_to.len() > 500 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::<Submission>::error(
+                "forward_to is too long (max 500 characters)",
+            )),
+        );
+    }
+
     // Update status to forwarded
     let result = sqlx::query_as::<_, Submission>(
         r#"
@@ -669,9 +679,15 @@ pub async fn export_submission_files(
                                     .filename
                                     .clone()
                                     .unwrap_or_else(|| "unknown".to_string());
-                                let filename = doc.original_filename.as_ref().unwrap_or(&fallback);
+                                let raw_filename =
+                                    doc.original_filename.as_ref().unwrap_or(&fallback);
+                                // Sanitize: strip directory components to prevent Zip Slip
+                                let safe_name = std::path::Path::new(raw_filename.as_str())
+                                    .file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("unknown");
                                 if zip
-                                    .start_file(format!("files/{}", filename), options)
+                                    .start_file(format!("files/{}", safe_name), options)
                                     .is_ok()
                                 {
                                     let _ = zip.write_all(&file_data);
