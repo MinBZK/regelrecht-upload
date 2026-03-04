@@ -96,15 +96,6 @@ fn has_sql_content(s: &str) -> bool {
     })
 }
 
-/// All migrations in order. Each entry is (name, SQL content).
-const MIGRATIONS: &[(&str, &str)] = &[
-    ("001_initial", include_str!("migrations/001_initial.sql")),
-    (
-        "003_retention_date",
-        include_str!("migrations/003_retention_date.sql"),
-    ),
-];
-
 /// Run database migrations with tracking
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Create migrations tracking table
@@ -117,36 +108,70 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
-    for (name, sql) in MIGRATIONS {
-        // Check if migration already applied
+    // Handle legacy databases: if schema exists but wasn't tracked, mark as applied
+    // This prevents re-running 001_initial on servers where it already ran
+    let submissions_exists: Option<(String,)> = sqlx::query_as(
+        "SELECT table_name::text FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'submissions'",
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if submissions_exists.is_some() {
+        // Schema exists - ensure 001_initial is marked as applied
+        sqlx::query(
+            "INSERT INTO _migrations (name) VALUES ('001_initial')
+             ON CONFLICT (name) DO NOTHING",
+        )
+        .execute(pool)
+        .await?;
+        tracing::info!("Legacy schema detected, marked 001_initial as applied");
+    }
+
+    // Define all migrations in order
+    let migrations = [
+        ("001_initial", include_str!("migrations/001_initial.sql")),
+        (
+            "003_retention_date",
+            include_str!("migrations/003_retention_date.sql"),
+        ),
+        (
+            "004_uploader_sessions",
+            include_str!("migrations/004_uploader_sessions.sql"),
+        ),
+    ];
+
+    for (name, sql) in migrations {
+        // Check if already applied
         let already_applied: Option<(String,)> =
             sqlx::query_as("SELECT name FROM _migrations WHERE name = $1")
-                .bind(*name)
+                .bind(name)
                 .fetch_optional(pool)
                 .await?;
 
         if already_applied.is_some() {
-            tracing::info!("Migration {} already applied, skipping", name);
+            tracing::debug!("Migration {} already applied, skipping", name);
             continue;
         }
 
-        // Split into statements, properly handling $$ blocks
-        let statements = split_sql_statements(sql);
+        tracing::info!("Applying migration: {}", name);
 
+        // Split and execute statements
+        let statements = split_sql_statements(sql);
         for statement in &statements {
             sqlx::query(statement).execute(pool).await.map_err(|e| {
-                tracing::error!("Migration {} statement failed: {}", name, e);
+                tracing::error!("Migration {} failed: {}", name, e);
                 e
             })?;
         }
 
-        // Record migration as applied
+        // Record as applied
         sqlx::query("INSERT INTO _migrations (name) VALUES ($1)")
-            .bind(*name)
+            .bind(name)
             .execute(pool)
             .await?;
 
-        tracing::info!("Database migration {} applied successfully", name);
+        tracing::info!("Migration {} applied successfully", name);
     }
 
     Ok(())

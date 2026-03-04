@@ -23,11 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   document.getElementById('btn-lookup').addEventListener('click', handleLookup);
   document.getElementById('btn-new-lookup').addEventListener('click', resetForm);
+  document.getElementById('btn-add-documents').addEventListener('click', handleAddDocuments);
 
   // Allow Enter key to submit
   slugInput.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') handleLookup();
   });
+}
+
+function handleAddDocuments() {
+  const slug = slugInput.value.trim();
+  window.location.href = `/uploader-login.html?slug=${encodeURIComponent(slug)}`;
 }
 
 async function handleLookup() {
@@ -92,14 +98,10 @@ function renderSubmissionStatus(sub) {
     restricted: 'Beperkt'
   };
 
-  // Submission info
+  // Submission info (naam en organisatie niet tonen voor privacy)
   document.getElementById('submission-info').innerHTML = `
     <span class="detail-label">Referentiecode:</span>
     <span class="detail-value"><code>${escapeHtml(sub.slug)}</code></span>
-    <span class="detail-label">Naam:</span>
-    <span class="detail-value">${escapeHtml(sub.submitter_name)}</span>
-    <span class="detail-label">Organisatie:</span>
-    <span class="detail-value">${escapeHtml(sub.organization)}${sub.organization_department ? ' - ' + escapeHtml(sub.organization_department) : ''}</span>
   `;
 
   // Status info
@@ -112,6 +114,15 @@ function renderSubmissionStatus(sub) {
     <span class="detail-value">${sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span>
   `;
 
+  // Show "Add Documents" button if submission has email and is not draft
+  // (draft submissions can add documents without login via submit.html)
+  const addDocsBtn = document.getElementById('btn-add-documents');
+  if (sub.submitter_email && sub.status !== 'draft') {
+    addDocsBtn.style.display = 'inline-flex';
+  } else {
+    addDocsBtn.style.display = 'none';
+  }
+
   // Documents
   const docsContainer = document.getElementById('submission-documents');
 
@@ -119,7 +130,6 @@ function renderSubmissionStatus(sub) {
     docsContainer.innerHTML = sub.documents.map(doc => `
       <div class="document-item" style="margin-bottom: 8px;">
         <div class="document-info">
-          <div class="document-icon">${doc.category === 'formal_law' ? '🔗' : '📄'}</div>
           <div>
             <div class="document-name">
               ${doc.external_url

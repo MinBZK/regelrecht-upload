@@ -125,7 +125,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Admin routes (protected by middleware)
     let admin_routes = Router::new()
         .route("/submissions", get(handlers::list_submissions))
-        .route("/submissions/:id", get(handlers::get_submission_admin))
+        .route(
+            "/submissions/:id",
+            get(handlers::get_submission_admin).delete(handlers::delete_submission),
+        )
         .route(
             "/submissions/:id/status",
             put(handlers::update_submission_status),
@@ -187,7 +190,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/admin/logout", post(handlers::admin_logout))
         .route("/admin/me", get(handlers::get_current_admin))
         // Protected admin routes
-        .nest("/admin", admin_routes);
+        .nest("/admin", admin_routes)
+        // Uploader self-service authentication (slug + email)
+        .route("/uploader/login", post(handlers::uploader_login))
+        .route("/uploader/logout", post(handlers::uploader_logout))
+        .route("/uploader/me", get(handlers::get_current_uploader));
 
     // Build main router
     let app = Router::new()
@@ -203,6 +210,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Spawn periodic cleanup task
     let cleanup_pool = pool.clone();
+    let cleanup_upload_dir = PathBuf::from(&config.upload_dir);
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
         loop {
@@ -221,7 +229,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .execute(&cleanup_pool)
                 .await
             {
-                tracing::warn!("Failed to clean up expired sessions: {}", e);
+                tracing::warn!("Failed to clean up expired admin sessions: {}", e);
+            }
+            // Clean up expired uploader sessions
+            if let Err(e) = sqlx::query("DELETE FROM uploader_sessions WHERE expires_at < NOW()")
+                .execute(&cleanup_pool)
+                .await
+            {
+                tracing::warn!("Failed to clean up expired uploader sessions: {}", e);
+            }
+            // Clean up abandoned draft submissions (older than 1 hour)
+            if let Err(e) =
+                handlers::cleanup_abandoned_drafts(&cleanup_pool, &cleanup_upload_dir).await
+            {
+                tracing::warn!("Failed to clean up abandoned drafts: {}", e);
             }
             tracing::debug!("Periodic cleanup completed");
         }

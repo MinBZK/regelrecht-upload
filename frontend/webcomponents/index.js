@@ -8,3 +8,5 @@ export { RRSelectField } from './rr-select-field.js';
 export { RRFileUpload } from './rr-file-upload.js';
 export { RRHelpText } from './rr-help-text.js';
 export { RRButton } from './rr-button.js';
+export { RRProgressBar } from './rr-progress-bar.js';
+export { RRToggleGroup } from './rr-toggle-group.js';

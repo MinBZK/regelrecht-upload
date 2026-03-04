@@ -6,16 +6,16 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
+  gap: var(--spacing-4);
 }
 
 .stat-card {
   background: var(--color-white);
   border-radius: var(--border-radius-lg);
-  padding: 24px;
+  padding: var(--spacing-6);
   text-align: center;
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-slate-200);
+  border: 1px solid var(--color-border);
 }
 
 .stat-value {
@@ -27,7 +27,7 @@
 .stat-label {
   color: var(--color-slate-600);
   font-size: 0.875rem;
-  margin-top: 4px;
+  margin-top: var(--spacing-1);
 }
 
 /* Table */
@@ -38,9 +38,9 @@
 
 .data-table th,
 .data-table td {
-  padding: 12px 16px;
+  padding: var(--spacing-3) var(--spacing-4);
   text-align: left;
-  border-bottom: 1px solid var(--color-slate-200);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .data-table th {
@@ -61,7 +61,7 @@
 /* Status badges */
 .status-badge {
   display: inline-block;
-  padding: 4px 12px;
+  padding: var(--spacing-1) var(--spacing-3);
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -80,11 +80,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: var(--spacing-4);
   background: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-2);
 }
 
 .slot-item.booked {
@@ -95,7 +95,7 @@
 .slot-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-1);
 }
 
 .slot-date {
@@ -135,18 +135,18 @@
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  padding: 24px;
+  padding: var(--spacing-6);
 }
 
 .modal-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: var(--spacing-4);
+  right: var(--spacing-4);
   background: none;
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: var(--color-slate-500);
+  color: var(--color-text-secondary);
 }
 
 .modal-close:hover {
@@ -160,7 +160,7 @@
   color: var(--color-primary);
   cursor: pointer;
   font-size: 0.875rem;
-  padding: 4px 8px;
+  padding: var(--spacing-1) var(--spacing-2);
 }
 
 .action-btn:hover {
@@ -173,10 +173,10 @@
 
 /* Pagination */
 .pagination-btn {
-  padding: 8px 12px;
+  padding: var(--spacing-2) var(--spacing-3);
   border: 1px solid var(--color-slate-300);
   background: var(--color-white);
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
 }
 
@@ -197,22 +197,22 @@
 
 /* Detail view */
 .detail-section {
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-6);
 }
 
 .detail-section h3 {
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-slate-800);
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--color-slate-200);
-  padding-bottom: 8px;
+  margin-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-2);
 }
 
 .detail-grid {
   display: grid;
   grid-template-columns: 140px 1fr;
-  gap: 8px;
+  gap: var(--spacing-2);
 }
 
 .detail-label {
