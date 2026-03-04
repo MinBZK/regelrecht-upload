@@ -17,6 +17,7 @@ mod validation;
 
 use axum::{
     extract::DefaultBodyLimit,
+    http::header,
     middleware as axum_middleware,
     routing::{delete, get, post, put},
     Router,
@@ -25,7 +26,7 @@ use handlers::AppState;
 use std::path::PathBuf;
 use tokio::fs;
 use tower_http::{
-    cors::{Any, CorsLayer},
+    cors::CorsLayer,
     services::ServeDir,
     trace::TraceLayer,
 };
@@ -95,6 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Build CORS layer
     let cors = if config.is_production() {
+        use axum::http::Method;
         CorsLayer::new()
             .allow_origin(
                 config
@@ -103,8 +105,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .filter_map(|o| o.parse().ok())
                     .collect::<Vec<_>>(),
             )
-            .allow_methods(Any)
-            .allow_headers(Any)
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                header::CONTENT_TYPE,
+                header::COOKIE,
+                header::ACCEPT,
+            ])
             .allow_credentials(true)
     } else {
         CorsLayer::permissive()

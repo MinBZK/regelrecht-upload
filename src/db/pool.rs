@@ -96,6 +96,15 @@ fn has_sql_content(s: &str) -> bool {
     })
 }
 
+/// All migrations in order. Each entry is (name, SQL content).
+const MIGRATIONS: &[(&str, &str)] = &[
+    ("001_initial", include_str!("migrations/001_initial.sql")),
+    (
+        "003_retention_date",
+        include_str!("migrations/003_retention_date.sql"),
+    ),
+];
+
 /// Run database migrations with tracking
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Create migrations tracking table
@@ -108,37 +117,37 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
-    // Check if migration already applied
-    let already_applied: Option<(String,)> =
-        sqlx::query_as("SELECT name FROM _migrations WHERE name = $1")
-            .bind("001_initial")
-            .fetch_optional(pool)
+    for (name, sql) in MIGRATIONS {
+        // Check if migration already applied
+        let already_applied: Option<(String,)> =
+            sqlx::query_as("SELECT name FROM _migrations WHERE name = $1")
+                .bind(*name)
+                .fetch_optional(pool)
+                .await?;
+
+        if already_applied.is_some() {
+            tracing::info!("Migration {} already applied, skipping", name);
+            continue;
+        }
+
+        // Split into statements, properly handling $$ blocks
+        let statements = split_sql_statements(sql);
+
+        for statement in &statements {
+            sqlx::query(statement).execute(pool).await.map_err(|e| {
+                tracing::error!("Migration {} statement failed: {}", name, e);
+                e
+            })?;
+        }
+
+        // Record migration as applied
+        sqlx::query("INSERT INTO _migrations (name) VALUES ($1)")
+            .bind(*name)
+            .execute(pool)
             .await?;
 
-    if already_applied.is_some() {
-        tracing::info!("Migration 001_initial already applied, skipping");
-        return Ok(());
+        tracing::info!("Database migration {} applied successfully", name);
     }
 
-    // Read and execute the migration file
-    let migration_sql = include_str!("migrations/001_initial.sql");
-
-    // Split into statements, properly handling $$ blocks
-    let statements = split_sql_statements(migration_sql);
-
-    for statement in &statements {
-        sqlx::query(statement).execute(pool).await.map_err(|e| {
-            tracing::error!("Migration statement failed: {}", e);
-            e
-        })?;
-    }
-
-    // Record migration as applied
-    sqlx::query("INSERT INTO _migrations (name) VALUES ($1)")
-        .bind("001_initial")
-        .execute(pool)
-        .await?;
-
-    tracing::info!("Database migration 001_initial applied successfully");
     Ok(())
 }

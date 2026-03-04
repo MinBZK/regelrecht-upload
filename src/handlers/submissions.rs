@@ -181,9 +181,16 @@ pub async fn get_submission(
     }
 }
 
+/// Rate limit: max slug-targeted operations per IP per hour
+const MAX_SLUG_ATTEMPTS: i64 = 30;
+
+/// Maximum number of documents allowed per submission
+const MAX_DOCUMENTS_PER_SUBMISSION: i64 = 20;
+
 /// Update submission
 pub async fn update_submission(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
     Json(input): Json<UpdateSubmission>,
 ) -> impl IntoResponse {
@@ -193,6 +200,19 @@ pub async fn update_submission(
             Json(ApiResponse::<Submission>::error(e.to_string())),
         );
     }
+
+    // Rate limit to prevent slug brute-force enumeration
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
+    if !check_rate_limit_with_max(&state.pool, &client_ip, "slug_mutation", MAX_SLUG_ATTEMPTS).await
+    {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiResponse::<Submission>::error(
+                "Too many requests. Please try again later.",
+            )),
+        );
+    }
+    record_attempt(&state.pool, &client_ip, "slug_mutation").await;
 
     // Check submission exists and is in draft status
     let existing = sqlx::query_as::<_, Submission>("SELECT * FROM submissions WHERE slug = $1")
@@ -272,6 +292,7 @@ pub async fn update_submission(
 /// Submit a submission (change status from draft to submitted)
 pub async fn submit_submission(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
     if let Err(e) = validate_slug(&slug) {
@@ -280,6 +301,19 @@ pub async fn submit_submission(
             Json(ApiResponse::<Submission>::error(e.to_string())),
         );
     }
+
+    // Rate limit to prevent slug brute-force enumeration
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
+    if !check_rate_limit_with_max(&state.pool, &client_ip, "slug_mutation", MAX_SLUG_ATTEMPTS).await
+    {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiResponse::<Submission>::error(
+                "Too many requests. Please try again later.",
+            )),
+        );
+    }
+    record_attempt(&state.pool, &client_ip, "slug_mutation").await;
 
     let result = sqlx::query_as::<_, Submission>(
         r#"
@@ -336,6 +370,7 @@ pub struct UploadDocumentQuery {
 /// Upload a document
 pub async fn upload_document(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
     Query(query): Query<UploadDocumentQuery>,
     mut multipart: Multipart,
@@ -354,6 +389,19 @@ pub async fn upload_document(
             Json(ApiResponse::<DocumentResponse>::error(e.to_string())),
         );
     }
+
+    // Rate limit to prevent slug brute-force enumeration
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
+    if !check_rate_limit_with_max(&state.pool, &client_ip, "slug_mutation", MAX_SLUG_ATTEMPTS).await
+    {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiResponse::<DocumentResponse>::error(
+                "Too many requests. Please try again later.",
+            )),
+        );
+    }
+    record_attempt(&state.pool, &client_ip, "slug_mutation").await;
 
     // Check classification - reject restricted documents
     if let Err(e) = validate_classification_for_upload(query.classification) {
@@ -395,6 +443,23 @@ pub async fn upload_document(
             Json(ApiResponse::error(
                 "Cannot upload to a submitted submission",
             )),
+        );
+    }
+
+    // Check document count limit
+    let doc_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE submission_id = $1")
+            .bind(submission.id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
+    if doc_count >= MAX_DOCUMENTS_PER_SUBMISSION {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error(format!(
+                "Maximum number of documents ({}) per submission reached",
+                MAX_DOCUMENTS_PER_SUBMISSION
+            ))),
         );
     }
 
@@ -448,12 +513,35 @@ pub async fn upload_document(
         }
     };
 
-    // Validate file
+    // Validate file (client-supplied MIME type + size)
     if let Err(e) = validate_file_upload(&content_type, data.len(), state.max_upload_size) {
         return (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::error(e.to_string())),
         );
+    }
+
+    // Server-side magic byte validation: verify file content matches claimed type
+    if let Some(kind) = infer::get(&data) {
+        let inferred_mime = kind.mime_type();
+        // Block files whose actual content is HTML/XML/JS (XSS risk)
+        let dangerous_inferred = [
+            "text/html",
+            "application/xml",
+            "text/xml",
+            "application/javascript",
+            "application/x-executable",
+            "application/x-dosexec",
+        ];
+        if dangerous_inferred.contains(&inferred_mime) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "File content detected as '{}', which is not allowed",
+                    inferred_mime
+                ))),
+            );
+        }
     }
 
     // Validate filename doesn't contain dangerous extensions
@@ -582,6 +670,7 @@ pub async fn upload_document(
 /// Add a formal law link
 pub async fn add_formal_law(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
     Json(input): Json<CreateFormalLaw>,
 ) -> impl IntoResponse {
@@ -592,6 +681,19 @@ pub async fn add_formal_law(
             Json(ApiResponse::<DocumentResponse>::error(e.to_string())),
         );
     }
+
+    // Rate limit to prevent slug brute-force enumeration
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
+    if !check_rate_limit_with_max(&state.pool, &client_ip, "slug_mutation", MAX_SLUG_ATTEMPTS).await
+    {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiResponse::<DocumentResponse>::error(
+                "Too many requests. Please try again later.",
+            )),
+        );
+    }
+    record_attempt(&state.pool, &client_ip, "slug_mutation").await;
 
     // Validate URL
     if let Err(e) = validate_external_url(&input.external_url) {
@@ -618,6 +720,23 @@ pub async fn add_formal_law(
             Json(ApiResponse::error(
                 "Cannot add documents to a submitted submission",
             )),
+        );
+    }
+
+    // Check document count limit
+    let doc_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE submission_id = $1")
+            .bind(submission.id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
+    if doc_count >= MAX_DOCUMENTS_PER_SUBMISSION {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::error(format!(
+                "Maximum number of documents ({}) per submission reached",
+                MAX_DOCUMENTS_PER_SUBMISSION
+            ))),
         );
     }
 
@@ -668,6 +787,7 @@ pub async fn add_formal_law(
 /// Delete a document
 pub async fn delete_document(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path((slug, doc_id)): Path<(String, Uuid)>,
 ) -> impl IntoResponse {
     if let Err(e) = validate_slug(&slug) {
@@ -676,6 +796,19 @@ pub async fn delete_document(
             Json(ApiResponse::<()>::error(e.to_string())),
         );
     }
+
+    // Rate limit to prevent slug brute-force enumeration
+    let client_ip = get_client_ip(&headers, &state.trusted_proxies);
+    if !check_rate_limit_with_max(&state.pool, &client_ip, "slug_mutation", MAX_SLUG_ATTEMPTS).await
+    {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiResponse::<()>::error(
+                "Too many requests. Please try again later.",
+            )),
+        );
+    }
+    record_attempt(&state.pool, &client_ip, "slug_mutation").await;
 
     // Get submission and verify ownership
     let submission = match get_submission_by_slug(&state.pool, &slug).await {
@@ -708,14 +841,23 @@ pub async fn delete_document(
 
     match doc {
         Ok(Some(doc)) => {
-            // Delete file if exists
+            // Delete file if exists, verifying path stays within upload directory
             if let Some(ref file_path) = doc.file_path {
-                let _ = fs::remove_file(file_path).await;
+                let path = std::path::Path::new(file_path);
+                if path.starts_with(&state.upload_dir) {
+                    let _ = fs::remove_file(file_path).await;
+                } else {
+                    tracing::error!(
+                        "Refusing to delete file outside upload dir: {:?}",
+                        file_path
+                    );
+                }
             }
 
-            // Delete from database
-            let _ = sqlx::query("DELETE FROM documents WHERE id = $1")
+            // Delete from database, constraining to submission for defense-in-depth
+            let _ = sqlx::query("DELETE FROM documents WHERE id = $1 AND submission_id = $2")
                 .bind(doc_id)
+                .bind(submission.id)
                 .execute(&state.pool)
                 .await;
 
